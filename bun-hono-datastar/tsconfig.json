@@ -3,6 +3,8 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": true,
     "strict": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
@@ -27,6 +29,7 @@
     "src/**/*.tsx",
     "scripts/**/*.ts",
     "e2e/**/*.ts",
+    "eslint-rules/**/*.js",
     "*.ts",
     "*.d.ts"
   ],

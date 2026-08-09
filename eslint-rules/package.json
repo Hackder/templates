@@ -8,14 +8,18 @@
   },
   "scripts": {
     "test": "bun test",
+    "typecheck": "tsc",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
-    "check": "bun run lint && bun run format:check && bun test"
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun test"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@typescript-eslint/utils": "8.66.0",
     "eslint": "10.8.1",
-    "prettier": "3.9.6"
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.66.0"
   }
 }

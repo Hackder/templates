@@ -4,6 +4,7 @@ import drizzle from "eslint-plugin-drizzle";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 
+import noAdjacentParametersSameType from "./eslint-rules/no-adjacent-parameters-same-type.js";
 import noDirectPhosphorIcons from "./eslint-rules/no-direct-phosphor-icons.js";
 
 export default defineConfig(
@@ -26,11 +27,16 @@ export default defineConfig(
     plugins: {
       drizzle,
       local: {
-        rules: { "no-direct-phosphor-icons": noDirectPhosphorIcons },
+        rules: {
+          "no-adjacent-parameters-same-type": noAdjacentParametersSameType,
+          "no-direct-phosphor-icons": noDirectPhosphorIcons,
+        },
       },
     },
     rules: {
+      "local/no-adjacent-parameters-same-type": "error",
       "local/no-direct-phosphor-icons": "error",
+      "func-style": ["error", "declaration", { allowArrowFunctions: false }],
       "drizzle/enforce-delete-with-where": [
         "error",
         { drizzleObjectName: ["db", "tx"] },
@@ -115,6 +121,7 @@ export default defineConfig(
         },
       ],
       "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/switch-exhaustiveness-check": "error",
       "@typescript-eslint/consistent-type-exports": [
         "error",

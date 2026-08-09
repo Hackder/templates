@@ -11,7 +11,7 @@ function containsPhosphorClass(value) {
 /**
  * Recursively extracts string parts from a node (handles template literals,
  * string literals, clsx/cx calls, array expressions, and ternaries)
- * @param {import("eslint").Rule.Node} node
+ * @param {import("@typescript-eslint/utils").TSESTree.Node | null} node
  * @returns {string[]}
  */
 function extractStringValues(node) {
@@ -73,7 +73,7 @@ function extractStringValues(node) {
   }
 }
 
-/** @type {import("eslint").Rule.RuleModule} */
+/** @type {import("@typescript-eslint/utils").TSESLint.RuleModule<"noDirectPhosphor", []>} */
 const rule = {
   meta: {
     type: "problem",
@@ -90,15 +90,18 @@ const rule = {
   create(context) {
     return {
       JSXOpeningElement(node) {
-        if (node.name.name !== "i") return;
+        if (node.name.type !== "JSXIdentifier" || node.name.name !== "i")
+          return;
 
         const classAttr = node.attributes.find(
           (attr) =>
             attr.type === "JSXAttribute" &&
+            attr.name.type === "JSXIdentifier" &&
             (attr.name.name === "class" || attr.name.name === "className"),
         );
 
-        if (!classAttr || !classAttr.value) return;
+        if (!classAttr || classAttr.type !== "JSXAttribute" || !classAttr.value)
+          return;
 
         const valueNode =
           classAttr.value.type === "JSXExpressionContainer"
