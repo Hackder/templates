@@ -73,7 +73,20 @@ function extractStringValues(node) {
   }
 }
 
-/** @type {import("@typescript-eslint/utils").TSESLint.RuleModule<"noDirectPhosphor", []>} */
+/**
+ * @param {unknown} node
+ * @returns {node is import("@typescript-eslint/utils").TSESTree.JSXOpeningElement}
+ */
+function isJSXOpeningElement(node) {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "type" in node &&
+    node.type === "JSXOpeningElement"
+  );
+}
+
+/** @type {import("eslint").Rule.RuleModule} */
 const rule = {
   meta: {
     type: "problem",
@@ -88,35 +101,42 @@ const rule = {
     },
   },
   create(context) {
+    /**
+     * @param {unknown} candidate
+     */
+    function checkJSXOpeningElement(candidate) {
+      if (!isJSXOpeningElement(candidate)) return;
+
+      const node = candidate;
+      if (node.name.type !== "JSXIdentifier" || node.name.name !== "i") return;
+
+      const classAttr = node.attributes.find(
+        (attr) =>
+          attr.type === "JSXAttribute" &&
+          attr.name.type === "JSXIdentifier" &&
+          (attr.name.name === "class" || attr.name.name === "className"),
+      );
+
+      if (!classAttr || classAttr.type !== "JSXAttribute" || !classAttr.value)
+        return;
+
+      const valueNode =
+        classAttr.value.type === "JSXExpressionContainer"
+          ? classAttr.value.expression
+          : classAttr.value;
+
+      const strings = extractStringValues(valueNode);
+
+      if (strings.some(containsPhosphorClass)) {
+        context.report({
+          node,
+          messageId: "noDirectPhosphor",
+        });
+      }
+    }
+
     return {
-      JSXOpeningElement(node) {
-        if (node.name.type !== "JSXIdentifier" || node.name.name !== "i")
-          return;
-
-        const classAttr = node.attributes.find(
-          (attr) =>
-            attr.type === "JSXAttribute" &&
-            attr.name.type === "JSXIdentifier" &&
-            (attr.name.name === "class" || attr.name.name === "className"),
-        );
-
-        if (!classAttr || classAttr.type !== "JSXAttribute" || !classAttr.value)
-          return;
-
-        const valueNode =
-          classAttr.value.type === "JSXExpressionContainer"
-            ? classAttr.value.expression
-            : classAttr.value;
-
-        const strings = extractStringValues(valueNode);
-
-        if (strings.some(containsPhosphorClass)) {
-          context.report({
-            node,
-            messageId: "noDirectPhosphor",
-          });
-        }
-      },
+      JSXOpeningElement: checkJSXOpeningElement,
     };
   },
 };

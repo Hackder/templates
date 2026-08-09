@@ -66,4 +66,3 @@ export function createLimitedFetch(opts: FetchOptions) { ... }
 ## Mobile Safari Performance
 
 Avoid large CSS `filter: blur(...)` layers, especially fixed or viewport-sized elements. Mobile WebKit can spend many seconds rendering their offscreen surfaces even after the server response and resources have loaded. Use radial gradients for ambient background glows instead.
-

@@ -38,7 +38,21 @@ function isThisParameter(parameter) {
   return parameter.type === "Identifier" && parameter.name === "this";
 }
 
-/** @type {import("@typescript-eslint/utils").TSESLint.RuleModule<"sameType", []>} */
+/**
+ * @param {unknown} node
+ * @returns {node is import("@typescript-eslint/utils").TSESTree.FunctionDeclaration | import("@typescript-eslint/utils").TSESTree.TSDeclareFunction}
+ */
+function isFunctionDeclaration(node) {
+  if (typeof node !== "object" || node === null || !("type" in node)) {
+    return false;
+  }
+
+  return (
+    node.type === "FunctionDeclaration" || node.type === "TSDeclareFunction"
+  );
+}
+
+/** @type {import("eslint").Rule.RuleModule} */
 const rule = {
   meta: {
     type: "suggestion",
@@ -54,11 +68,25 @@ const rule = {
   },
   create(context) {
     const sourceCode = context.sourceCode;
+    const sourceTokens = sourceCode.getTokens(sourceCode.ast);
 
     /**
-     * @param {import("@typescript-eslint/utils").TSESTree.FunctionDeclaration | import("@typescript-eslint/utils").TSESTree.TSDeclareFunction} node
+     * @param {import("@typescript-eslint/utils").TSESTree.TypeNode} typeNode
+     */
+    function getTypeTokens(typeNode) {
+      return sourceTokens.filter(
+        (token) =>
+          token.range[0] >= typeNode.range[0] &&
+          token.range[1] <= typeNode.range[1],
+      );
+    }
+
+    /**
+     * @param {unknown} node
      */
     function checkParameters(node) {
+      if (!isFunctionDeclaration(node)) return;
+
       const parameters = node.params.filter(
         (parameter) => !isThisParameter(parameter),
       );
@@ -74,12 +102,12 @@ const rule = {
 
         if (!previousType || !currentType) continue;
 
-        const previousTokens = sourceCode
-          .getTokens(previousType)
-          .map((token) => `${token.type}:${token.value}`);
-        const currentTokens = sourceCode
-          .getTokens(currentType)
-          .map((token) => `${token.type}:${token.value}`);
+        const previousTokens = getTypeTokens(previousType).map(
+          (token) => `${token.type}:${token.value}`,
+        );
+        const currentTokens = getTypeTokens(currentType).map(
+          (token) => `${token.type}:${token.value}`,
+        );
 
         if (
           previousTokens.length === currentTokens.length &&
@@ -90,7 +118,9 @@ const rule = {
           context.report({
             node: currentParameter,
             messageId: "sameType",
-            data: { type: sourceCode.getText(currentType) },
+            data: {
+              type: sourceCode.text.slice(...currentType.range),
+            },
           });
         }
       }
