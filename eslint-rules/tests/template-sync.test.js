@@ -3,8 +3,9 @@ import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 
 for (const ruleName of [
-  "no-adjacent-parameters-same-type",
+  "no-consecutive-parameters-same-type",
   "no-direct-phosphor-icons",
+  "no-multiple-positional-booleans",
 ]) {
   test(`${ruleName} is synchronized with the template`, async () => {
     const canonical = await readFile(

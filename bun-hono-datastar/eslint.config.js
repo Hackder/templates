@@ -4,8 +4,9 @@ import drizzle from "eslint-plugin-drizzle";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 
-import noAdjacentParametersSameType from "./eslint-rules/no-adjacent-parameters-same-type.js";
+import noConsecutiveParametersSameType from "./eslint-rules/no-consecutive-parameters-same-type.js";
 import noDirectPhosphorIcons from "./eslint-rules/no-direct-phosphor-icons.js";
+import noMultiplePositionalBooleans from "./eslint-rules/no-multiple-positional-booleans.js";
 
 export default defineConfig(
   { ignores: ["dist", "coverage", "static"] },
@@ -28,14 +29,17 @@ export default defineConfig(
       drizzle,
       local: {
         rules: {
-          "no-adjacent-parameters-same-type": noAdjacentParametersSameType,
+          "no-consecutive-parameters-same-type":
+            noConsecutiveParametersSameType,
           "no-direct-phosphor-icons": noDirectPhosphorIcons,
+          "no-multiple-positional-booleans": noMultiplePositionalBooleans,
         },
       },
     },
     rules: {
-      "local/no-adjacent-parameters-same-type": "error",
+      "local/no-consecutive-parameters-same-type": "error",
       "local/no-direct-phosphor-icons": "error",
+      "local/no-multiple-positional-booleans": "error",
       "func-style": ["error", "declaration", { allowArrowFunctions: false }],
       "drizzle/enforce-delete-with-where": [
         "error",
