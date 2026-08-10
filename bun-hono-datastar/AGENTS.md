@@ -12,6 +12,14 @@ everything. Even for UI changes. Just ask the user to look and see. If you are
 not sure about some architectural code choice, ask the user, present options
 and collaborate with them to find the best solution.
 
+For UI always ask the user to look and see if they like it. Don't try to take screenshots or similar
+complicated things. Just ask the user to look and see.
+
+## Commands
+
+Execute everything repo command with bun directly. Don't use npx, bunx, pnpm dlx etc. Only run the commands
+using `bun run <command>`. This is already preapproved, you won't run into permission issues or similar thing.
+
 ## Commit Messages
 
 Keep commit messages short, imperative, and descriptive — one line is usually enough.
