@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs";
-import { dirname } from "node:path";
 import { env } from "../src/env";
 import { E2E_DATABASE_URL } from "./constants";
+import { dirname } from "node:path";
 
 if (env.TURSO_DATABASE_URL !== E2E_DATABASE_URL) {
   throw new Error(
@@ -15,10 +15,10 @@ if (env.MOCK_TIME === undefined) {
   throw new Error("E2E tests require MOCK_TIME");
 }
 
-const databaseFile = env.TURSO_DATABASE_URL.replace(/^file:/, "");
-mkdirSync(dirname(databaseFile), { recursive: true });
+const dbFile = env.TURSO_DATABASE_URL.replace("file:", "");
+mkdirSync(dirname(dbFile), { recursive: true });
 for (const suffix of ["", "-wal", "-shm"]) {
-  rmSync(`${databaseFile}${suffix}`, { force: true });
+  rmSync(`${dbFile}${suffix}`, { force: true });
 }
 
 const push = Bun.spawnSync({

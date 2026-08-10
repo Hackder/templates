@@ -20,7 +20,7 @@ Run `bun run tailwind` in another terminal while changing styles.
 bun run check
 ```
 
-CI runs typechecking, linting, formatting, tests, the Tailwind build, and the Docker build separately.
+CI runs typechecking, linting, formatting, tests, the Tailwind build, and the Docker build separately. The unit tests read the local database, so run `bun run db:push` before them on a fresh checkout.
 
 Run browser tests after installing the local Playwright browsers:
 
@@ -34,6 +34,7 @@ bun run test:e2e
 - Drizzle ORM with local libSQL by default and optional Turso/embedded-replica configuration.
 - ESLint safety rules reject Drizzle updates and deletes without `where` clauses.
 - Explicit Temporal imports and an ESLint policy rejecting legacy `Date` construction and static methods in TypeScript.
+- A single `instantToDateForInteropWithDrizzle` boundary for passing Temporal values into Drizzle's `Date`-typed timestamp columns.
 - Deterministic server time for E2E tests through `MOCK_TIME` and fake timers.
 - Vendored Datastar with custom hot reload, URL navigation, countdown, hash navigation, back navigation, and Safari view-transition support.
 - Development signal inspector and generation-aware server restart reloads.
@@ -47,6 +48,7 @@ bun run test:e2e
 - `src/app.tsx` contains the Hono routes and minimal Datastar example.
 - `src/datastar.tsx` contains signal parsing and SSE helpers.
 - `src/db.ts` and `src/schema.ts` provide the Drizzle/libSQL baseline.
+- `src/web/utils.ts` holds the shared class-merging, exhaustiveness, and Temporal/Drizzle interop helpers.
 - `src/dev-mode.tsx` provides hot reload and the Datastar signal inspector.
 - `src/env.ts` is the only module that reads the process environment.
 - `static/script.js` registers the custom Datastar browser plugins.

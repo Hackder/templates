@@ -1,3 +1,4 @@
+import { count as countRows, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { etag } from "hono/etag";
@@ -7,9 +8,16 @@ import { z } from "zod/v4";
 import { getFileHash } from "./assets";
 import { gzipCompress } from "./compress";
 import { datastarSse, readSignalsRequired } from "./datastar";
+import { db } from "./db";
 import { DevMode, devModeApp } from "./dev-mode";
 import { env } from "./env";
+import { items } from "./schema";
 import { Icon } from "./web/components/icon";
+import {
+  cn,
+  exhaustiveCheck,
+  instantToDateForInteropWithDrizzle,
+} from "./web/utils";
 
 export const app = new Hono();
 
@@ -30,7 +38,39 @@ app.use("/static/*", async (context, next) => {
 app.use("/static/*", serveStatic({ root: "./" }));
 app.get("/favicon.ico", serveStatic({ path: "./static/favicon.svg" }));
 
-function Counter({ count }: { count: number }) {
+const RECENT_ITEMS_WINDOW = Temporal.Duration.from({ hours: 24 });
+
+// Timestamp columns are `Date` on the Drizzle side, so comparing them against a
+// Temporal value needs the interop helper.
+async function countItemsSince(since: Temporal.Instant): Promise<number> {
+  const [row] = await db
+    .select({ total: countRows() })
+    .from(items)
+    .where(gte(items.createdAt, instantToDateForInteropWithDrizzle(since)));
+  return row?.total ?? 0;
+}
+
+type CounterTone = "idle" | "active";
+
+function counterToneClass(tone: CounterTone): string {
+  switch (tone) {
+    case "idle":
+      return "text-slate-400";
+    case "active":
+      return "text-white";
+    default:
+      return exhaustiveCheck(tone);
+  }
+}
+
+interface CounterProps {
+  count: number;
+  recentItems: number;
+}
+
+function Counter({ count, recentItems }: CounterProps) {
+  const tone: CounterTone = count === 0 ? "idle" : "active";
+
   return (
     <main
       id="counter"
@@ -40,11 +80,20 @@ function Counter({ count }: { count: number }) {
         <p class="text-sm font-medium tracking-[0.2em] text-cyan-300 uppercase">
           Bun + Hono + Datastar
         </p>
-        <h1 class="text-5xl font-semibold tracking-tight text-white">
+        <h1
+          class={cn(
+            "text-5xl font-semibold tracking-tight",
+            counterToneClass(tone),
+          )}
+        >
           Count: {count}
         </h1>
         <p class="text-slate-400">
           Server-rendered JSX, updated over a Datastar event stream.
+        </p>
+        <p class="text-xs text-slate-600">
+          {recentItems} items stored in the last {RECENT_ITEMS_WINDOW.hours}{" "}
+          hours
         </p>
         <p class="text-xs text-slate-600">
           Rendered at {Temporal.Now.instant().toString()}
@@ -62,8 +111,12 @@ function Counter({ count }: { count: number }) {
   );
 }
 
-app.get("/", (context) =>
-  context.html(
+app.get("/", async (context) => {
+  const recentItems = await countItemsSince(
+    Temporal.Now.instant().subtract(RECENT_ITEMS_WINDOW),
+  );
+
+  return context.html(
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
@@ -86,19 +139,24 @@ app.get("/", (context) =>
         ></script>
       </head>
       <body data-signals={JSON.stringify({ count: 0 })}>
-        <Counter count={0} />
+        <Counter count={0} recentItems={recentItems} />
         {env.NODE_ENV === "development" && <DevMode />}
       </body>
     </html>,
-  ),
-);
+  );
+});
 
 const counterSignals = z.object({ count: z.number().int().nonnegative() });
 
 app.post("/increment", async (context) => {
   const { count } = await readSignalsRequired(context.req, counterSignals);
+  const recentItems = await countItemsSince(
+    Temporal.Now.instant().subtract(RECENT_ITEMS_WINDOW),
+  );
   return datastarSse(context, async (sender) => {
-    await sender.patchElements(<Counter count={count + 1} />);
+    await sender.patchElements(
+      <Counter count={count + 1} recentItems={recentItems} />,
+    );
     await sender.patchSignals({ count: count + 1 });
   });
 });

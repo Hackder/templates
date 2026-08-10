@@ -6,7 +6,10 @@ describe("app", () => {
   test("renders the initial page", async () => {
     const response = await app.request("/");
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("Count: 0");
+    const body = await response.text();
+    expect(body).toContain("Count: 0");
+    // The count comes from a Drizzle query bounded by a Temporal instant.
+    expect(body).toMatch(/\d+ items stored in the last 24 hours/);
   });
 
   test("patches elements and signals", async () => {
