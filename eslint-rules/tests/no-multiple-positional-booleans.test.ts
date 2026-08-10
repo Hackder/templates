@@ -5,7 +5,6 @@ import rule from "../rules/no-multiple-positional-booleans.js";
 
 RuleTester.describe = describe;
 RuleTester.it = test;
-RuleTester.itOnly = test.only;
 
 const filename = "rule-test.ts";
 const ruleTester = new RuleTester({

@@ -4,7 +4,6 @@ import rule from "../rules/no-direct-phosphor-icons.js";
 
 RuleTester.describe = describe;
 RuleTester.it = test;
-RuleTester.itOnly = test.only;
 
 const ruleTester = new RuleTester({
   languageOptions: {
