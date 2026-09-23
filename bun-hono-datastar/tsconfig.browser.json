@@ -1,0 +1,20 @@
+{
+  // The scripts in static/ run in the browser, not in Bun. They get their own
+  // project so the DOM lib is available there without leaking `document`,
+  // `window` and friends into the server code checked by tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": [],
+    "jsx": "preserve",
+    "checkJs": true,
+    "allowJs": true
+  },
+  "include": [
+    "static/**/*.js",
+    "static/**/*.d.ts",
+    "tools/logview/static/**/*.js",
+    "tools/logview/static/**/*.d.ts"
+  ],
+  "exclude": ["node_modules", "static/datastar-1.0.2.js"]
+}

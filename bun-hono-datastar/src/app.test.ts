@@ -37,6 +37,20 @@ describe("app", () => {
     expect(response.status).toBe(400);
   });
 
+  test("answers health checks from the database", async () => {
+    const response = await app.request("/health");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("OK");
+  });
+
+  test("serves robots.txt and the favicon", async () => {
+    const robots = await app.request("/robots.txt");
+    const favicon = await app.request("/favicon.ico");
+
+    expect(await robots.text()).toContain("User-agent: *");
+    expect(favicon.status).toBe(200);
+  });
+
   test("only caches assets with a matching content hash", async () => {
     const version = getFileHash("static/script.js");
     const matching = await app.request(`/static/script.js?v=${version}`);

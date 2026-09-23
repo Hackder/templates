@@ -3,32 +3,46 @@ import { HTTPException } from "hono/http-exception";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { HtmlEscapedCallbackPhase, resolveCallback } from "hono/utils/html";
 import { type ZodType, z } from "zod/v4";
+import { logger } from "./logger";
+import { jsonParse } from "./std";
 
 const jsonObjectSchema = z.record(z.string(), z.json());
 type JsonObject = z.infer<typeof jsonObjectSchema>;
+
+/**
+ * Whether the request came from Datastar, which sets this header on every
+ * fetch it makes. Its response patches the page in place, so a redirect
+ * would rewrite the browser's URL behind a partial update instead of being
+ * followed as a navigation.
+ */
+export function isDatastarRequest(req: HonoRequest): boolean {
+  return req.header("datastar-request") !== undefined;
+}
 
 export async function readSignals(
   req: HonoRequest,
   getKey = "datastar",
 ): Promise<JsonObject | null> {
-  let raw: unknown;
+  let raw;
 
-  try {
-    if (req.method === "GET") {
-      const datastar = req.query(getKey);
-      if (datastar === undefined) {
-        return null;
-      }
-      raw = JSON.parse(decodeURIComponent(datastar));
-    } else {
-      raw = await req.json();
+  if (req.method === "GET" || req.method === "HEAD") {
+    const datastar = req.query(getKey);
+    if (datastar === undefined) {
+      return null;
     }
-  } catch {
+    raw = jsonParse(decodeURIComponent(datastar));
+  } else {
+    raw = jsonParse(await req.text());
+  }
+
+  if (!raw.ok) {
+    logger().set({ datastarSignalsErr: raw.error });
     throw new HTTPException(400, { message: "Invalid Datastar signals" });
   }
 
-  const parsed = jsonObjectSchema.safeParse(raw);
+  const parsed = jsonObjectSchema.safeParse(raw.value);
   if (!parsed.success) {
+    logger().set({ datastarSignalsErr: parsed.error });
     throw new HTTPException(400, { message: "Invalid Datastar signals" });
   }
 
@@ -42,6 +56,7 @@ export async function readSignalsRequired<T>(
 ): Promise<T> {
   const parsed = validator.safeParse((await readSignals(req, getKey)) ?? {});
   if (!parsed.success) {
+    logger().set({ signalsParseErrors: parsed.error.message });
     throw new HTTPException(400, { message: "Invalid Datastar signals" });
   }
   return parsed.data;
@@ -124,6 +139,9 @@ export function PushUrl({
   part?: "full" | "query";
 }) {
   const method = mode === "push" ? "pushState" : "replaceState";
+  // The origin is replaced with the browser's own: behind a TLS-terminating
+  // proxy (e.g. Cloudflare) the server sees plain HTTP, and pushState refuses
+  // a URL whose origin differs from the page's.
   const content = `
     (() => {
       const target = new URL(${JSON.stringify(url.toString())}, "http://localhost");
@@ -134,6 +152,17 @@ export function PushUrl({
       const value = target.toString();
       if (window.location.href !== value) {
         history.${method}({ url: value }, "", value);
+      } else if (history.state?.url !== value) {
+        // The URL is already the target one — typically the very first render
+        // of a freshly loaded page. Skipping the history call here would leave
+        // that entry without a state, and the popstate handlers restore the
+        // page by re-fetching \`history.state.url\`, so going back to a
+        // stateless entry would change the URL while leaving the previously
+        // patched DOM on screen. Stamp the url into the existing entry.
+        // Always a replace, never a push: nothing new happened, we are only
+        // labelling the entry we are on. The state check keeps it idempotent,
+        // since this script re-renders with every SSE patch.
+        history.replaceState({ url: value }, "", value);
       }
     })();
   `;

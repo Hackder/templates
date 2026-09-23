@@ -1,9 +1,14 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { logger } from "./logger";
 
+// The server restarts when assets change in development, clearing this cache.
 const fileHashes = new Map<string, string>();
 
+/**
+ * Gets and caches a content hash for cache busting.
+ */
 export function getFileHash(filePath: string): string {
   const cached = fileHashes.get(filePath);
   if (cached !== undefined) {
@@ -13,7 +18,7 @@ export function getFileHash(filePath: string): string {
   try {
     const absolutePath = join(process.cwd(), filePath);
     if (!existsSync(absolutePath)) {
-      console.warn(`File not found for hashing: ${filePath}`);
+      logger().warn("File not found for hashing", { filePath });
       return "00000000";
     }
 
@@ -24,7 +29,7 @@ export function getFileHash(filePath: string): string {
     fileHashes.set(filePath, hash);
     return hash;
   } catch (error) {
-    console.error(`Error calculating hash for ${filePath}:`, error);
+    logger().error("Error calculating file hash", { filePath, err: error });
     return "00000000";
   }
 }

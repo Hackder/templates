@@ -1,18 +1,41 @@
 import os from "node:os";
-import { Temporal } from "temporal-polyfill";
 import { app } from "./app";
-import { env } from "./env";
+import { ensureDotEnv, env } from "./env";
+import { logger } from "./logger";
 
-if (env.MOCK_TIME !== undefined) {
-  const fakeTimers = await import("@sinonjs/fake-timers");
-  fakeTimers.install({
-    now: Temporal.Instant.from(env.MOCK_TIME).epochMilliseconds,
-    toFake: ["Date", "Intl"],
+// `.bun-version` is the pinned Bun release (see bun-version.test.ts). Bun does
+// not enforce it, so surface a mismatch loudly instead of letting a different
+// runtime run silently.
+const pinnedBunVersion = (
+  await Bun.file(new URL("../.bun-version", import.meta.url)).text()
+).trim();
+if (Bun.version !== pinnedBunVersion) {
+  logger().warn("Running Bun version differs from the pinned .bun-version", {
+    running: Bun.version,
+    pinned: pinnedBunVersion,
+  });
+}
+
+if (env.NODE_ENV === "development") {
+  await ensureDotEnv();
+}
+
+if (env.MOCK_TIME) {
+  const { setSystemTime } = await import("bun:test");
+  setSystemTime(env.MOCK_TIME);
+  logger().info("Fake timers installed", {
+    now: Temporal.Now.instant(),
   });
 }
 
 const server = Bun.serve({
   fetch: app.fetch,
+  error: (error) => {
+    // Hono handles request errors itself. Reaching Bun means rendering that
+    // error response also failed, so bypass the app and report directly.
+    logger().error("Failed to render error response", { err: error });
+    return new Response("Internal Server Error", { status: 500 });
+  },
   development: env.NODE_ENV === "development",
   port: env.PORT,
   idleTimeout: 0,

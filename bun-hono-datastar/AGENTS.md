@@ -15,10 +15,42 @@ and collaborate with them to find the best solution.
 For UI always ask the user to look and see if they like it. Don't try to take screenshots or similar
 complicated things. Just ask the user to look and see.
 
+## Stack
+
+Bun · Hono · Datastar SSR (server-rendered JSX) · Drizzle ORM · Turso/libSQL · Tailwind · Temporal API
+
+Tooling: TypeScript 7 (`tsc`), Oxlint (`.oxlintrc.json`, type-aware via `oxlint-tsgolint`), Oxfmt (`.oxfmtrc.json`).
+
+## Decisions
+
+`DECISIONS.md` records product and design decisions with their reasoning.
+Read it before changing user-facing or infrastructure behaviour, and add an
+entry when finishing work involved a judgement call.
+
+## Before You Call Anything Done
+
+Run the full check (typecheck, lint, format check, unit tests, Tailwind build):
+
+```sh
+bun run check
+```
+
+Everything must pass!
+
 ## Commands
 
 Execute everything repo command with bun directly. Don't use npx, bunx, pnpm dlx etc. Only run the commands
 using `bun run <command>`. This is already preapproved, you won't run into permission issues or similar thing.
+
+## Assertions
+
+- We like assertions, we should use assertions from "node:assert/strict" (the `local/assert-strict-import` rule enforces the import).
+- If there is a local piece of code that a reader would assume some invariant about — for example, get or insert a list of rows into the database, which should obviously return as many rows as were passed in — assert it. It does not depend on any external inputs. It's an internal invariant.
+- If there is anything that could realistically happen during normal operation — user provided data, data from an external service etc. — we don't assert that. Never assert that. Always validate external data with zod/v4 and handle the errors properly.
+- The assertion message should explain why the thing that it asserts is impossible. Not just restate in words the condition it checks.
+- If there is a way to avoid assertion by making the types better, we should do that. In this project we validate at input boundary and then trust typescript.
+  Examples of ways to avoid assertions while still keeping the same guarantees:
+  - If there is a length check and right below an index access, for example arr[0], we could -> check if `if (arr[0] !== undefined)` or if we need small length check maybe `const [first, second, third] = arr`
 
 ## Commit Messages
 
@@ -71,6 +103,48 @@ export function createLimitedFetch(opts: FetchOptions) { ... }
 // Bad — forces the reader to scroll to a "types" section to understand the function
 ```
 
+## Custom Lint Rules
+
+Project-specific rules live in `lint-rules/` as an Oxlint JS plugin (`lint-rules/plugin.js`, registered as `local/*` in `.oxlintrc.json`). Each rule has a fixture in `lint-rules/fixtures/` and `lint-rules/rules.test.ts` asserts the exact lines it reports — add a fixture case when adding or changing a rule. `lint-rules/anti-slop/` is a vendored third-party plugin; do not edit or reformat it.
+
+Oxlint JS plugins are syntax-only (no TypeScript type checker), so `no-consecutive-parameters-same-type` and `no-multiple-positional-booleans` compare written type annotations; parameters whose type is only inferred are not checked.
+
+NEVER suppress a rule without explicit user approval!
+
 ## Mobile Safari Performance
 
 Avoid large CSS `filter: blur(...)` layers, especially fixed or viewport-sized elements. Mobile WebKit can spend many seconds rendering their offscreen surfaces even after the server response and resources have loaded. Use radial gradients for ambient background glows instead.
+
+## Reuse Helpers from `src/utils.ts`
+
+Before writing a new helper, check `src/utils.ts`, `src/std.ts` and existing modules. Key helpers:
+
+| Helper                                     | When to use                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------- |
+| `cn(...classes)`                           | Merging Tailwind class lists                                              |
+| `createLimitedFetch({ concurrency, rps })` | Any external HTTP request                                                 |
+| `unaccent(str)`                            | Accent-insensitive string comparison or search matching                   |
+| `exhaustiveCheck(value)`                   | Final branch of any discriminated-union switch / if-else                  |
+| `Semaphore`                                | Low-level concurrency control (prefer `createLimitedFetch` for HTTP)      |
+| `instantToDateForInteropWithDrizzle(i)`    | Passing a `Temporal.Instant` into a Drizzle `timestamp` column            |
+| `jsonParse(text)` (`src/std.ts`)           | Parsing JSON into a `Result` instead of throwing (`JSON.parse` is linted) |
+
+**One limiter instance per external API.** Instantiate at module scope and share it across all calls to that API. If each call creates its own limiter, the per-second cap is not enforced across concurrent callers.
+
+```ts
+// Good — single instance shared across all functions in this module
+const limitedFetch = createLimitedFetch({ concurrency: 3, rps: 5 });
+
+export async function fetchUsers() { ... limitedFetch(...) ... }
+export async function fetchOrders() { ... limitedFetch(...) ... }
+```
+
+## Dependencies and Type Declarations
+
+Prefer the official types package over a hand-written shim:
+
+```sh
+bun add -D @types/<pkg>
+```
+
+Only write a local `.d.ts` file when no `@types/<pkg>` package exists for the library. Hand-written shims drift from the real API and are hard to maintain.

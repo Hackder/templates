@@ -7,22 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  custom-eslint-rules:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: eslint-rules
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: eslint-rules/.bun-version
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Check custom rules
-        run: bun run check
-
   bun-hono-datastar:
     runs-on: ubuntu-latest
     defaults:
@@ -36,18 +20,11 @@ jobs:
           bun-version-file: bun-hono-datastar/.bun-version
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Typecheck
-        run: bun run typecheck
-      - name: Lint
-        run: bun run lint
-      - name: Check formatting
-        run: bun run format:check
+      # The unit tests read the local database, so create its schema first.
       - name: Push database schema
         run: bun run db:push
-      - name: Test
-        run: bun test
-      - name: Build CSS
-        run: bun run tailwind:build
+      - name: Check
+        run: bun run check
       - name: Build container
         run: docker build .
 

@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { etag } from "hono/etag";
 import { HTTPException } from "hono/http-exception";
-import { Temporal } from "temporal-polyfill";
 import { z } from "zod/v4";
 import { getFileHash } from "./assets";
 import { gzipCompress } from "./compress";
@@ -11,18 +10,27 @@ import { datastarSse, readSignalsRequired } from "./datastar";
 import { db } from "./db";
 import { DevMode, devModeApp } from "./dev-mode";
 import { env } from "./env";
+import { logger, withSpan } from "./logger";
 import { items } from "./schema";
-import { Icon } from "./web/components/icon";
 import {
   cn,
   exhaustiveCheck,
   instantToDateForInteropWithDrizzle,
-} from "./web/utils";
+} from "./utils";
+import { Icon } from "./web/components/icon";
 
 export const app = new Hono();
 
 app.use("/static/*", etag());
 app.use("*", gzipCompress());
+/**
+ * Asset caching keyed on the ?v=<content hash> stamped into URLs by
+ * getFileHash. The hash is validated against the file this server actually
+ * has: during a rolling deploy a server may receive a URL minted by a
+ * different version, and answering it with mismatched bytes must not get
+ * cached under that URL — those responses go out no-store. Only a verified
+ * match is immutable; unversioned assets revalidate via ETag.
+ */
 app.use("/static/*", async (context, next) => {
   await next();
   const version = context.req.query("v");
@@ -36,7 +44,38 @@ app.use("/static/*", async (context, next) => {
   }
 });
 app.use("/static/*", serveStatic({ root: "./" }));
-app.get("/favicon.ico", serveStatic({ path: "./static/favicon.svg" }));
+
+// Old browsers and crawlers request /favicon.ico unprompted; serve the real
+// icon there instead of rendering a 404 page.
+app.use("/favicon.ico", serveStatic({ path: "./static/favicon.ico" }));
+
+app.get("/robots.txt", (context) => context.text("User-agent: *\nAllow: /\n"));
+app.get("/health", async (context) => {
+  try {
+    await db.select({ id: items.id }).from(items).limit(1);
+    return context.text("OK");
+  } catch {
+    return context.text("Service Unavailable", 503);
+  }
+});
+
+// One owning span per request: everything set during handling (status, parse
+// errors, counters) lands on its single close line. Field names follow the
+// OpenTelemetry HTTP semantic conventions so Axiom's HTTP views pick them up.
+app.use(async (context, next) => {
+  await withSpan(
+    "request",
+    {
+      "http.request.method": context.req.method,
+      "url.path": context.req.path,
+    },
+    { kind: "server", origin: "request" },
+    async () => {
+      await next();
+      logger().set({ "http.response.status_code": context.res.status });
+    },
+  );
+});
 
 const RECENT_ITEMS_WINDOW = Temporal.Duration.from({ hours: 24 });
 
@@ -170,5 +209,11 @@ app.onError((error, context) => {
   const status = error instanceof HTTPException ? error.status : 500;
   const message =
     error instanceof HTTPException ? error.message : "Internal server error";
+
+  // Hono catches route errors before `next()` returns to the request span, so
+  // record server failures here while that span is still active.
+  if (status >= 500) {
+    logger().set({ requestErr: error });
+  }
   return context.text(message, status);
 });

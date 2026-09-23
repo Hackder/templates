@@ -5,14 +5,18 @@ A self-contained starting point for server-rendered TypeScript applications usin
 ## Setup
 
 ```sh
-cp .env.example .env
 bun install
 bun run db:push
 bun run tailwind:build
 bun run dev
 ```
 
-Run `bun run tailwind` in another terminal while changing styles.
+`bun run dev` creates a `.env` on first run with every variable from
+`src/env.ts` commented out next to its default. Uncomment a line to override it.
+There is no `.env.example`; the schema in `src/env.ts` is the documentation.
+
+Run `bun run tailwind` in another terminal while changing styles, and
+`bun run logview` for the local log and trace viewer (see below).
 
 ## Checks
 
@@ -20,7 +24,7 @@ Run `bun run tailwind` in another terminal while changing styles.
 bun run check
 ```
 
-CI runs typechecking, linting, formatting, tests, the Tailwind build, and the Docker build separately. The unit tests read the local database, so run `bun run db:push` before them on a fresh checkout.
+`check` runs the typecheck (`tsc` for the server and a separate DOM project for `static/`), Oxlint (type-aware, with the custom rules in `lint-rules/`), the Oxfmt format check, `bun test --parallel`, and the Tailwind build. `bun run tc` is the quicker typecheck plus lint. `bun run format:fix` formats everything. The unit tests read the local database, so run `bun run db:push` before them on a fresh checkout. CI runs `bun run check`, the E2E tests, and the Docker build.
 
 Run browser tests after installing the local Playwright browsers:
 
@@ -29,32 +33,72 @@ bunx playwright install chromium webkit
 bun run test:e2e
 ```
 
+## Logging and traces
+
+Everything logs through `src/logger/`: `withSpan` for an owning span with one
+canonical close line, `withSection` for a nested timing, `logger().info()`
+and friends for events. Every request runs in a `request` span, and database
+queries are recorded as `client` sections by `src/db-instrument.ts`. The
+calling thread only queues JSON records; a worker prints them, appends
+`logs/log.ndjson` for the viewer and, when `AXIOM_TOKEN` is set, ships them to
+Axiom as OpenTelemetry traces and logs (`AXIOM_TRACES_DATASET` and
+`AXIOM_LOGS_DATASET`). `AXIOM_URL` defaults to the US East edge deployment; an
+organisation on the EU deployment (Settings > General) sets it to
+`https://eu-central-1.aws.edge.axiom.co`. Every span, including sections, shows
+up in Axiom's trace waterfall.
+
+`bun run logview` starts the local viewer on `LOGVIEW_PORT` (4600 by default).
+It tails `LOG_JSON_FILE` (`logs/log.ndjson`, truncated on every app start) and
+shows each trace as a waterfall of its spans, events and errors.
+
+To find slow requests in Axiom and open one:
+
+```
+['bun-hono-datastar-traces']
+| where kind == "server" and duration > 500ms
+| project _time, trace_id, ['attributes.url.path'], duration
+| order by duration desc
+```
+
+Clicking the trace id shows the request's sections (renders, database
+queries) on a timeline, with warnings and errors as events on their span.
+Axiom files the OpenTelemetry semantic-convention fields (`url.path`, `http.*`,
+`db.*`) directly under `attributes`; our own fields and the counters sit in the
+`attributes.custom` map.
+
 ## Included Infrastructure
 
 - Drizzle ORM with local libSQL by default and optional Turso/embedded-replica configuration.
-- ESLint safety rules reject Drizzle updates and deletes without `where` clauses.
-- Explicit Temporal imports and an ESLint policy rejecting legacy `Date` construction and static methods in TypeScript.
-- A single `instantToDateForInteropWithDrizzle` boundary for passing Temporal values into Drizzle's `Date`-typed timestamp columns.
-- Deterministic server time for E2E tests through `MOCK_TIME` and fake timers.
-- Vendored Datastar with custom hot reload, URL navigation, countdown, hash navigation, back navigation, and Safari view-transition support.
+- Oxlint (type-aware) and Oxfmt, with project rules in `lint-rules/` and the vendored anti-slop plugin. Custom rules reject Drizzle updates and deletes without `where` clauses, the legacy `Date` API, direct Phosphor classes, `JSON.parse` outside `src/std.ts`, and more.
+- Bun's native `Temporal` global, and a single `instantToDateForInteropWithDrizzle` boundary for passing Temporal values into Drizzle's `Date`-typed timestamp columns.
+- Deterministic server time for E2E tests through `MOCK_TIME` and Bun's `setSystemTime`.
+- Structured logging with spans, an NDJSON file for `bun run logview`, and optional OpenTelemetry export to Axiom.
+- Vendored Datastar with custom hot reload, URL navigation, hash navigation, back navigation, and Safari view-transition support.
 - Development signal inspector and generation-aware server restart reloads.
 - Query-string content hashes with server-side validation and rolling-deployment-safe cache headers.
-- ETag and SSE-safe gzip middleware.
-- Typed, self-hosted Phosphor icons with direct class usage rejected by ESLint.
+- ETag and SSE-safe brotli/gzip middleware with q-value negotiation.
+- `/health` (used by the Docker `HEALTHCHECK`) and `/robots.txt`.
+- Typed, self-hosted Phosphor icons with direct class usage rejected by the linter.
 - Chromium and WebKit Playwright projects with isolated local database preparation.
+- A pinned Bun version in `.bun-version`, kept in lockstep with `package.json` and the Dockerfile by `bun-version.test.ts`.
 
 ## Structure
 
 - `src/app.tsx` contains the Hono routes and minimal Datastar example.
 - `src/datastar.tsx` contains signal parsing and SSE helpers.
 - `src/db.ts` and `src/schema.ts` provide the Drizzle/libSQL baseline.
-- `src/web/utils.ts` holds the shared class-merging, exhaustiveness, and Temporal/Drizzle interop helpers.
+- `src/db-instrument.ts` wraps the libSQL client so every query is a span.
+- `src/logger/` is the logger; `src/std.ts` holds `Result` and `jsonParse`.
+- `src/utils.ts` holds the shared class-merging, exhaustiveness, rate-limited fetch, and Temporal/Drizzle interop helpers.
 - `src/dev-mode.tsx` provides hot reload and the Datastar signal inspector.
-- `src/env.ts` is the only module that reads the process environment.
+- `src/env.ts` is the only module that reads the process environment, and generates `.env`.
 - `static/script.js` registers the custom Datastar browser plugins.
 - `src/web/components/icon.tsx` is the typed boundary for Phosphor icons.
 - `src/input.css` is compiled to the generated `static/styles.css`.
 - `static/datastar-1.0.2.js` is a pinned, self-hosted Datastar bundle.
 - `static/icons-2.1.2` contains the pinned, self-hosted Phosphor font.
+- `tools/logview/` is the local log and trace viewer.
+- `lint-rules/` holds the custom Oxlint rules and their fixtures; `lint-rules/rules.test.ts` asserts the lines each fixture reports.
+- `DECISIONS.md` records judgement calls that are easy to accidentally undo.
 
-The logger libraries used by some source projects are intentionally excluded. Domain-specific scraping, train, cinema, network topology, and Home Assistant behavior is also excluded.
+Domain-specific scraping, train, cinema, network topology, and Home Assistant behavior is also excluded.

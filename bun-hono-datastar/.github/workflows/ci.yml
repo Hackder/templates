@@ -7,52 +7,68 @@ on:
     branches: [main]
 
 jobs:
-  checks:
+  ci:
+    name: "CI"
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Typecheck
-        run: bun run typecheck
-      - name: Lint
-        run: bun run lint
-      - name: Check formatting
-        run: bun run format:check
+
+      # The unit tests read the local database, so create its schema first.
       - name: Push database schema
         run: bun run db:push
-      - name: Test
-        run: bun test
-      - name: Build CSS
-        run: bun run tailwind:build
+
+      - name: Check
+        run: bun run check
 
   e2e:
+    name: "E2E"
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Read Playwright version
+
+      # The browser cache is keyed on the installed Playwright version, so
+      # bumping @playwright/test automatically invalidates it.
+      - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(bun -e 'console.log(require("@playwright/test/package.json").version)')" >> "$GITHUB_OUTPUT"
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-browsers-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-      - name: Install Chromium
+
+      # `install` skips browsers already restored from the cache, so this is
+      # cheap on a hit. `--with-deps` apt-installs system libraries, which
+      # live outside the cached directory and are needed on every fresh
+      # runner VM (per the Playwright CI docs, they are not cacheable).
+      # Only chromium: the webkit project is excluded on CI (see
+      # playwright.config.ts).
+      - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
-      - name: Run E2E tests
+
+      - name: Run e2e tests
         run: bun run test:e2e
-      - name: Upload failed traces
+
+      - name: Upload traces of failed tests
         if: failure()
         uses: actions/upload-artifact@v4
         with:

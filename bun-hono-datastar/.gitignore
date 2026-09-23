@@ -1,7 +1,5 @@
 node_modules/
 .env
-.env.*
-!.env.example
 coverage/
 dist/
 data/
@@ -11,3 +9,6 @@ playwright-report/
 static/styles.css
 **/.DS_Store
 CPU.*
+logs/
+scratch/
+CLAUDE.local.md

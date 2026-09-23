@@ -1,0 +1,262 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": [
+    "./lint-rules/plugin.js",
+    {
+      "name": "anti-slop",
+      "specifier": "./lint-rules/anti-slop/index.ts"
+    }
+  ],
+  "plugins": ["eslint", "typescript"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "ignorePatterns": [
+    "dist",
+    "coverage",
+    "static",
+    "test-results",
+    "lint-rules/fixtures",
+    "lint-rules/anti-slop"
+  ],
+  "rules": {
+    // In the enabled categories but not part of the project rule set
+    "no-await-in-loop": "off",
+    "no-shadow": "off",
+    "typescript/consistent-return": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    // eslint:recommended rules outside the enabled categories
+    "no-case-declarations": "error",
+    "no-empty": "error",
+    "no-fallthrough": "error",
+    "no-prototype-builtins": "error",
+    "no-redeclare": "error",
+    "no-regex-spaces": "error",
+    "no-undef": "error",
+    "no-useless-assignment": "error",
+    // project rules
+    "local/assert-strict-import": "error",
+    "local/no-complex-if-condition": "error",
+    "local/no-consecutive-parameters-same-type": "error",
+    "local/no-date": "error",
+    "local/no-direct-phosphor-icons": "error",
+    "local/no-import-extensions": "error",
+    "local/no-import-meta-env": "error",
+    "local/no-json-parse": "error",
+    "local/no-multiple-positional-booleans": "error",
+    "local/zod-v4-import": "error",
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "func-style": [
+      "error",
+      "declaration",
+      {
+        "allowArrowFunctions": false
+      }
+    ],
+    "local/enforce-delete-with-where": [
+      "error",
+      {
+        "drizzleObjectName": ["db", "tx"]
+      }
+    ],
+    "local/enforce-update-with-where": [
+      "error",
+      {
+        "drizzleObjectName": ["db", "tx"]
+      }
+    ],
+    "no-nested-ternary": "error",
+    "eqeqeq": ["error", "smart"],
+    "curly": ["error", "all"],
+    "no-param-reassign": "error",
+    "no-restricted-properties": [
+      "error",
+      {
+        "object": "process",
+        "property": "env",
+        "message": "Use the centralized src/env.ts module instead."
+      },
+      {
+        "object": "Bun",
+        "property": "env",
+        "message": "Use the centralized src/env.ts module instead."
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "bun",
+            "importNames": ["env"],
+            "message": "Use the centralized src/env.ts module instead."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["lint-rules/**"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      // Plugin files are loaded by Oxlint's Node-style ESM loader, which
+      // requires explicit extensions on relative imports.
+      "files": ["lint-rules/**/*.js"],
+      "rules": {
+        "local/no-import-extensions": "off"
+      }
+    },
+    {
+      // typescript-eslint recommended; TypeScript itself reports undefined names
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "no-undef": "off",
+        "no-array-constructor": "error",
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-namespace": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/consistent-type-imports": [
+          "error",
+          {
+            "prefer": "type-imports",
+            "fixStyle": "inline-type-imports"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "e2e/**/*.ts",
+        "scripts/**/*.ts",
+        "tools/**/*.ts",
+        "tools/**/*.tsx",
+        "./*.ts"
+      ],
+      "rules": {
+        "no-empty-function": "error",
+        "typescript/adjacent-overload-signatures": "error",
+        "typescript/array-type": "error",
+        "typescript/ban-ts-comment": [
+          "error",
+          {
+            "minimumDescriptionLength": 10
+          }
+        ],
+        "typescript/ban-tslint-comment": "error",
+        "typescript/class-literal-property-style": "error",
+        "typescript/consistent-generic-constructors": "error",
+        "typescript/consistent-indexed-object-style": "error",
+        "typescript/consistent-type-assertions": "error",
+        "typescript/consistent-type-definitions": "error",
+        "typescript/consistent-type-exports": [
+          "error",
+          {
+            "fixMixedExportsWithInlineTypeSpecifier": true
+          }
+        ],
+        "typescript/dot-notation": "error",
+        "typescript/no-deprecated": "error",
+        "typescript/no-dynamic-delete": "error",
+        "typescript/no-floating-promises": "error",
+        "typescript/no-inferrable-types": "error",
+        "typescript/no-invalid-void-type": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-mixed-enums": "error",
+        "typescript/no-non-null-asserted-nullish-coalescing": "error",
+        "typescript/no-non-null-assertion": "error",
+        "typescript/no-unnecessary-condition": [
+          "error",
+          {
+            "allowConstantLoopConditions": "only-allowed-literals"
+          }
+        ],
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "typescript/non-nullable-type-assertion-style": "error",
+        "typescript/only-throw-error": "error",
+        "typescript/prefer-find": "error",
+        "typescript/prefer-for-of": "error",
+        "typescript/prefer-function-type": "error",
+        "typescript/prefer-includes": "error",
+        "typescript/prefer-literal-enum-member": "error",
+        "typescript/prefer-optional-chain": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/prefer-reduce-type-parameter": "error",
+        "typescript/prefer-regexp-exec": "error",
+        "typescript/prefer-return-this-type": "error",
+        "typescript/prefer-string-starts-ends-with": "error",
+        "typescript/related-getter-setter-pairs": "error",
+        "typescript/require-await": "error",
+        "typescript/restrict-plus-operands": [
+          "error",
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNullish": false,
+            "allowNumberAndString": false,
+            "allowRegExp": false
+          }
+        ],
+        "typescript/return-await": ["error", "error-handling-correctness-only"],
+        "typescript/strict-boolean-expressions": [
+          "error",
+          {
+            "allowString": false,
+            "allowNumber": false,
+            "allowNullableObject": true
+          }
+        ],
+        "typescript/switch-exhaustiveness-check": "error",
+        "typescript/unified-signatures": "error",
+        "typescript/use-unknown-in-catch-callback-variable": "error"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.typetest.ts",
+        "e2e/**/*.ts"
+      ],
+      "rules": {
+        // Non-null assertions are idiomatic in tests: fixtures are known-present,
+        // and a wrong assertion fails the test loudly anyway
+        "typescript/no-non-null-assertion": "off",
+        // Often quite useful in tests
+        "local/no-json-parse": "off"
+      }
+    }
+  ]
+}

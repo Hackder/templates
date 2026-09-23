@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "pretty": true,
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -8,7 +9,7 @@
     "strict": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
-    "types": ["bun"],
+    "types": ["bun-types"],
     "skipLibCheck": true,
     "noEmit": true,
     "noImplicitAny": true,
@@ -27,11 +28,14 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "tools/**/*.ts",
+    "tools/**/*.tsx",
     "e2e/**/*.ts",
-    "eslint-rules/**/*.js",
-    "eslint.config.js",
+    "lint-rules/**/*.js",
+    "lint-rules/**/*.ts",
+    "lint-rules/**/*.tsx",
     "*.ts",
     "*.d.ts"
   ],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": ["node_modules", "dist", "coverage", "lint-rules/anti-slop"]
 }

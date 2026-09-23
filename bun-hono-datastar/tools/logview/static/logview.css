@@ -1,0 +1,688 @@
+/* Industrial single-scheme design system for the log viewer. Every color
+   encodes state: steel = owning span, graphite = section, oxide = error,
+   amber = still running. Sharp corners, 1px borders, mono everywhere. */
+
+:root {
+  --bg: #131316;
+  --surface: #1a1a1e;
+  --surface-2: #212127;
+  --border: #303037;
+  --border-strong: #4c4c56;
+  --text: #d6d6db;
+  --text-muted: #98989f;
+  --text-faint: #66666e;
+
+  --sel-bg: #233446;
+  --sel-border: #6d93bd;
+  --sel-text: #cfe1f5;
+
+  --sp-own-bg: #31485f;
+  --sp-own-border: #4d6d8f;
+  --sp-sec-bg: #26262d;
+  --sp-sec-border: #3d3d46;
+  --sp-err-bg: #552b2e;
+  --sp-err-border: #a04a4e;
+  --sp-run-bg: #4d4127;
+  --sp-run-border: #8f7a3d;
+
+  --band-alt: #1a1a20;
+
+  --lvl-debug: #66666e;
+  --lvl-info: #69a877;
+  --lvl-warn: #c9a03a;
+  --lvl-error: #d66b66;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 1px solid var(--sel-border);
+  outline-offset: -1px;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* --- Header ---------------------------------------------------------------- */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex: none;
+}
+
+.title {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--text);
+}
+
+.title-sep {
+  color: var(--text-faint);
+}
+
+.header-stat {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.stat-bad {
+  color: var(--lvl-error);
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.chip-row {
+  display: flex;
+}
+
+.chip {
+  border: 1px solid var(--border);
+  border-left-width: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.chip:first-child {
+  border-left-width: 1px;
+}
+
+.chip:hover {
+  color: var(--text);
+}
+
+.chip-on {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.btn-on {
+  border-color: var(--sel-border);
+  background: var(--sel-bg);
+  color: var(--sel-text);
+}
+
+.filter {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 7px;
+  width: 190px;
+}
+
+.filter::placeholder {
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+}
+
+.filter:focus {
+  outline: 1px solid var(--sel-border);
+  outline-offset: -1px;
+}
+
+/* Compact variant for filter inputs living inside a panel title bar. */
+.filter-sm {
+  width: 150px;
+  padding: 1px 6px;
+  font-size: 10px;
+}
+
+/* --- Panels ---------------------------------------------------------------- */
+
+.cols {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Drag handles between panels; they are the boundary line itself. Sizes are
+   written as CSS vars on #app by logview.js. */
+.resizer {
+  flex: none;
+  background: var(--border);
+  user-select: none;
+  touch-action: none;
+  transition: background 0.15s;
+}
+
+.resizer:hover {
+  background: var(--border-strong);
+}
+
+.resizer-v {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.resizer-h {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.panel-title-detail {
+  letter-spacing: normal;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-title {
+  padding: 6px 8px 4px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.hint {
+  font-size: 9px;
+  color: var(--text-faint);
+  letter-spacing: 0.05em;
+}
+
+.empty {
+  padding: 14px 10px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+/* --- Trace list ------------------------------------------------------------ */
+
+.traces {
+  width: var(--w-traces, 290px);
+  flex: none;
+}
+
+.trace-rows {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.trace-row {
+  padding: 5px 8px 5px 6px;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.trace-row:hover {
+  background: var(--surface-2);
+}
+
+.trace-row.selected {
+  background: var(--sel-bg);
+  border-left-color: var(--sel-border);
+}
+
+.trace-row-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trace-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-dur {
+  color: var(--text-muted);
+  flex: none;
+}
+
+.trace-row-bottom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.badge {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 0 4px;
+  border: 1px solid;
+}
+
+.badge-run {
+  color: var(--sp-run-border);
+  border-color: var(--sp-run-border);
+}
+
+.badge-warn {
+  color: var(--lvl-warn);
+  border-color: var(--lvl-warn);
+}
+
+.badge-err {
+  color: var(--lvl-error);
+  border-color: var(--sp-err-border);
+}
+
+.trace-fields {
+  margin-top: 1px;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-fields .field:first-child {
+  margin-left: 0;
+}
+
+/* --- Flame graph ----------------------------------------------------------- */
+
+.center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.flame {
+  flex: none;
+  height: var(--h-flame, 45%);
+}
+
+.flame-axis {
+  position: relative;
+  height: 17px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex: none;
+}
+
+.flame-axis .tick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  padding: 3px 0 0 3px;
+  font-size: 9px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.flame-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  --pan: 0;
+  --ppms: 0.05;
+}
+
+.flame-viewport:active {
+  cursor: grabbing;
+}
+
+.flame-canvas {
+  position: relative;
+  /* At least the viewport, so the closing stripe below the last band has
+     room to run to the bottom. */
+  min-height: 100%;
+}
+
+/* Depth-band stripes: rows sharing a stripe hold spans of the same tree
+   level; the next stripe down is one level deeper. */
+.flame-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.flame-band-alt {
+  background: var(--band-alt);
+}
+
+/* Vertical line marking an event's emit time; positioned by the same
+   pan/zoom vars as the bars, so it tracks the time axis for free. */
+.flame-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  left: calc((var(--s) - var(--pan)) * var(--ppms) * 1px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.flame-marker[hidden] {
+  display: none;
+}
+
+.flame-marker-hover {
+  background: var(--lvl-warn);
+  opacity: 0.7;
+}
+
+.flame-marker-selected {
+  background: var(--sel-border);
+}
+
+.flame-span {
+  position: absolute;
+  height: 20px;
+  line-height: 18px;
+  left: calc((var(--s) - var(--pan)) * var(--ppms) * 1px);
+  width: calc(var(--d) * var(--ppms) * 1px);
+  box-shadow: inset 0 0 0 1px var(--span-border);
+  font-size: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sp-owning {
+  background: var(--sp-own-bg);
+  --span-border: var(--sp-own-border);
+}
+
+.sp-section {
+  background: var(--sp-sec-bg);
+  --span-border: var(--sp-sec-border);
+}
+
+.sp-running {
+  background: var(--sp-run-bg);
+  --span-border: var(--sp-run-border);
+}
+
+.sp-error {
+  background: var(--sp-err-bg);
+  --span-border: var(--sp-err-border);
+}
+
+.flame-span:hover {
+  --span-border: var(--border-strong);
+  z-index: 1;
+}
+
+.flame-span.selected {
+  --span-border: var(--sel-border);
+  box-shadow: inset 0 0 0 2px var(--span-border);
+  z-index: 2;
+}
+
+/* Hover lineage (set by logview.js): the hovered bar, its ancestors and its
+   descendants stay bright while every unrelated bar fades, so concurrent
+   branches separate visually. */
+.flame-viewport.has-hover .flame-span {
+  opacity: 0.3;
+  transition: opacity 0.1s;
+}
+
+.flame-viewport.has-hover .flame-span.sp-hover,
+.flame-viewport.has-hover .flame-span.sp-ancestor,
+.flame-viewport.has-hover .flame-span.sp-descendant {
+  opacity: 1;
+}
+
+.flame-span.sp-ancestor {
+  --span-border: var(--text-muted);
+  z-index: 1;
+}
+
+.flame-span.sp-descendant {
+  --span-border: var(--sel-border);
+  z-index: 1;
+}
+
+/* The span the flame graph is focused on (only its branch is rendered). */
+.flame-span.sp-focused {
+  --span-border: var(--text);
+  z-index: 2;
+}
+
+.flame-label {
+  display: block;
+  padding: 0 4px;
+  color: var(--text);
+}
+
+.flame-label-dur {
+  color: var(--text-muted);
+}
+
+/* --- Events ---------------------------------------------------------------- */
+
+.events {
+  flex: 1;
+  min-height: 0;
+}
+
+.event-rows {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.event-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--surface-2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.event-row.clickable {
+  cursor: pointer;
+}
+
+.event-row.clickable:hover {
+  background: var(--surface-2);
+}
+
+.event-row.selected {
+  background: var(--sel-bg);
+}
+
+.event-time {
+  color: var(--text-faint);
+  flex: none;
+  font-size: 10px;
+}
+
+.level {
+  flex: none;
+  width: 40px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.level-debug {
+  color: var(--lvl-debug);
+}
+
+.level-info {
+  color: var(--lvl-info);
+}
+
+.level-warn {
+  color: var(--lvl-warn);
+}
+
+.level-error {
+  color: var(--lvl-error);
+}
+
+.event-body {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.event-path {
+  color: var(--text-faint);
+}
+
+.fields {
+  color: var(--text-muted);
+}
+
+.field {
+  margin-left: 8px;
+}
+
+.field-key {
+  color: var(--text-faint);
+}
+
+.event-err {
+  color: var(--lvl-error);
+  margin-left: 8px;
+}
+
+/* --- Inspector ------------------------------------------------------------- */
+
+.inspector {
+  width: var(--w-inspector, 360px);
+  flex: none;
+}
+
+.inspector-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.kv {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.kv td {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--surface-2);
+  vertical-align: top;
+}
+
+.kv-key {
+  color: var(--text-faint);
+  width: 90px;
+  white-space: nowrap;
+}
+
+.kv-value {
+  word-break: break-all;
+}
+
+.error-block {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.error-head {
+  color: var(--lvl-error);
+}
+
+.error-stack {
+  margin: 2px 0;
+  font-size: 10px;
+  color: var(--text-faint);
+  overflow-x: auto;
+}
+
+.error-nested {
+  border-left: 1px solid var(--sp-err-border);
+  margin: 4px 0 4px 4px;
+}
+
+.error-nested-label {
+  padding: 0 8px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

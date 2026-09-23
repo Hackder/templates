@@ -1,0 +1,26 @@
+{
+  "$schema": "../node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": ["./plugin.js"],
+  "plugins": [],
+  "categories": { "correctness": "off" },
+  "rules": {
+    "local/assert-strict-import": "error",
+    "local/enforce-delete-with-where": [
+      "error",
+      { "drizzleObjectName": ["db", "tx"] }
+    ],
+    "local/enforce-update-with-where": [
+      "error",
+      { "drizzleObjectName": ["db", "tx"] }
+    ],
+    "local/no-complex-if-condition": "error",
+    "local/no-consecutive-parameters-same-type": "error",
+    "local/no-date": "error",
+    "local/no-direct-phosphor-icons": "error",
+    "local/no-import-extensions": "error",
+    "local/no-import-meta-env": "error",
+    "local/no-json-parse": "error",
+    "local/no-multiple-positional-booleans": "error",
+    "local/zod-v4-import": "error"
+  }
+}

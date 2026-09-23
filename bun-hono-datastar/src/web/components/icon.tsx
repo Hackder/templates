@@ -12,7 +12,7 @@ export type IconProps = {
 export function Icon({ icon, children, class: className, ...rest }: IconProps) {
   return (
     // The wrapper is the one intentional owner of raw Phosphor classes.
-    // eslint-disable-next-line local/no-direct-phosphor-icons
+    // oxlint-disable-next-line local/no-direct-phosphor-icons
     <i class={`ph-bold ph-${icon} ${className ?? ""}`} {...rest}>
       {children}
     </i>

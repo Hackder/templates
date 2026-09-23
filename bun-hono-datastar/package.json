@@ -2,50 +2,46 @@
   "name": "bun-hono-datastar",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.3.14",
-  "engines": {
-    "bun": "~1.3.14"
-  },
+  "packageManager": "bun@1.4.2",
   "scripts": {
     "dev": "bun run --watch src/main.ts",
+    "logview": "bun run --watch tools/logview/main.tsx",
     "tailwind": "tailwindcss -i ./src/input.css -o ./static/styles.css --watch",
     "tailwind:build": "tailwindcss -i ./src/input.css -o ./static/styles.css --minify",
-    "typecheck": "tsc",
-    "lint": "eslint .",
-    "format:check": "prettier --check .",
-    "format:fix": "prettier --write .",
-    "test": "bun test",
+    "typecheck": "tsc && tsc -p tsconfig.browser.json",
+    "lint": "oxlint",
+    "tc": "bun run typecheck && bun run lint",
+    "format:check": "oxfmt --check",
+    "format:fix": "oxfmt",
+    "test": "bun test --parallel",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "check": "bun run typecheck && bun run lint && bun run format:check && bun test && bun run tailwind:build"
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test && bun run tailwind:build"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",
-    "@sinonjs/fake-timers": "^15.4.0",
     "clsx": "2.1.1",
     "drizzle-orm": "0.45.2",
     "hono": "4.13.1",
     "tailwind-merge": "3.6.0",
-    "temporal-polyfill": "1.0.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@eslint/js": "10.0.1",
+    "@oxc-project/types": "0.150.0",
+    "@oxlint/plugins": "1.79.0",
     "@playwright/test": "1.62.1",
     "@tailwindcss/cli": "4.3.3",
     "@total-typescript/ts-reset": "0.6.1",
-    "@types/bun": "1.3.14",
-    "@typescript-eslint/utils": "8.66.0",
+    "bun-types": "1.4.2",
     "drizzle-kit": "0.31.10",
-    "eslint": "10.8.1",
-    "eslint-plugin-drizzle": "0.2.3",
-    "prettier": "3.9.6",
-    "prettier-plugin-tailwindcss": "0.8.1",
+    "oxc-parser": "0.150.0",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
     "tailwindcss": "4.3.3",
-    "typescript": "6.0.3",
-    "typescript-eslint": "8.66.0"
+    "typescript": "7.0.2"
   }
 }

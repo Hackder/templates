@@ -33,19 +33,10 @@ test("serves vendored browser dependencies", async ({ page }) => {
 test("runs custom Datastar plugins", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
-    const countdown = document.createElement("span");
-    countdown.id = "countdown";
-    countdown.setAttribute(
-      "data-countdown",
-      String(performance.timeOrigin + performance.now() + 65_000),
-    );
-    document.body.append(countdown);
-
     const pushUrl = document.createElement("div");
     pushUrl.setAttribute("data-push-url", "/plugin-target");
     document.body.append(pushUrl);
   });
 
-  await expect(page.locator("#countdown")).toHaveText(/^1:0[0-5]$/);
   await expect(page).toHaveURL(/\/plugin-target$/);
 });

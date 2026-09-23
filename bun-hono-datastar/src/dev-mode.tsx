@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { Temporal } from "temporal-polyfill";
-import { Icon } from "./web/components/icon";
+import type { PropsWithChildren } from "hono/jsx";
+import { flushLogger, logger } from "./logger";
+import { Icon, type IconKind } from "./web/components/icon";
 
 // Namespaces the dev overlay's localStorage entries (tab position, panel
 // geometry). Change it per project so two apps sharing a localhost port do not
@@ -12,8 +13,8 @@ const generation = crypto.randomUUID();
 const startedAt = Temporal.Now.instant().toString();
 
 // The overlay is deliberately self-contained: neutral colours, sharp corners,
-// no animation. It has to sit on top of any page this template grows into
-// without inheriting or clashing with that page's design.
+// no animation. It has to sit on top of any page without inheriting or clashing
+// with that page's design.
 interface FieldProps {
   label: string;
   value: string;
@@ -28,7 +29,42 @@ function Field({ label, value }: FieldProps) {
   );
 }
 
-export function DevMode() {
+interface DevButtonProps {
+  icon: IconKind;
+  label: string;
+  /** Datastar expression run on click, e.g. `@post('/dev/reset')`. */
+  action: string;
+  /**
+   * Signal name driven by `data-indicator`. While the action's request is in
+   * flight the button is covered by a spinner instead of being replaced, so the
+   * row does not reflow.
+   */
+  indicator: string;
+}
+
+export function DevButton({ icon, label, action, indicator }: DevButtonProps) {
+  return (
+    <button
+      type="button"
+      class="relative flex cursor-pointer items-center gap-1.5 border border-neutral-700 bg-neutral-900 px-1.5 py-1 text-[11px] text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+      data-on:click={action}
+      data-indicator={indicator}
+    >
+      <Icon icon={icon} class="text-[13px]" />
+      <span>{label}</span>
+      <span
+        class="absolute inset-0 flex items-center justify-center bg-neutral-900"
+        style="display: none;"
+        data-show={`$${indicator}`}
+      >
+        <Icon icon="circle-notch" class="animate-spin text-[13px]" />
+      </span>
+    </button>
+  );
+}
+
+/** `children` are page-specific tools, rendered in their own panel section. */
+export function DevMode({ children }: PropsWithChildren) {
   return (
     <div
       id="dev-ui"
@@ -99,6 +135,10 @@ export function DevMode() {
           data-json-signals
         ></pre>
 
+        {children !== undefined && (
+          <div class="border-t border-neutral-800 px-2 py-1.5">{children}</div>
+        )}
+
         <div class="grid gap-0.5 border-t border-neutral-800 px-2 py-1.5 text-[11px]">
           <Field label="build" value={generation.slice(0, 8)} />
           <Field label="start" value={startedAt} />
@@ -118,16 +158,35 @@ export function DevMode() {
 
 export const devModeApp = new Hono();
 
-devModeApp.get("/hot-reload", (context) =>
-  streamSSE(context, async (sender) => {
-    if (context.req.query("generation") !== generation) {
+// The generation is minted per server process and baked into the page. A client
+// that reconnects with a stale generation was rendered by the previous process,
+// so it is told to reload instead of being kept alive.
+devModeApp.get("/hot-reload", (c) =>
+  streamSSE(c, async (sender) => {
+    if (c.req.query("generation") !== generation) {
       await sender.writeSSE({ data: "reload" });
       return;
     }
 
     while (!sender.aborted) {
-      await sender.writeSSE({ data: "ping" });
+      await sender.writeSSE({ data: "ping", retry: 200 });
       await Bun.sleep(1000);
     }
   }),
 );
+
+// NOTE(juraj): This was used for profiling. When the profiler was running
+// and I killed the server with Ctrl+C, no profile information was lost.
+// Therefore this was added to allow me to kill the server gracefully.
+devModeApp.get("/exit", (c) => {
+  logger().info("Exit endpoint called. Shutting down...");
+  setTimeout(() => {
+    logger().info("Exiting now.");
+    // `process.exit` skips the logger's own shutdown hooks.
+    void flushLogger().then(() => {
+      process.exit(0);
+    });
+  }, 1000);
+
+  return c.text("Shutting down...");
+});
