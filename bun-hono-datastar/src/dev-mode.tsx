@@ -43,6 +43,11 @@ export function DevMode() {
         id="dev-ui-tab"
         class="pointer-events-auto absolute flex size-7 cursor-grab touch-none items-center justify-center border border-neutral-700 bg-neutral-950 text-neutral-400 hover:text-neutral-100"
         aria-label="Toggle dev tools"
+        /* Position is an inline style dev-mode.js writes on load, and the
+           server markup has none. A page patch morphs the whole body and
+           strips attributes the incoming element lacks, so without this the
+           tab jumps to the container's origin on every Datastar navigation. */
+        data-preserve-attr="style"
       >
         <Icon icon="lightning" class="text-[14px]" data-show="!$hotreloading" />
         <Icon
@@ -57,6 +62,9 @@ export function DevMode() {
         id="dev-ui-panel"
         class="pointer-events-auto absolute flex flex-col border border-neutral-700 bg-neutral-950"
         style="display: none;"
+        /* Geometry and open/closed state both live in this inline style, so a
+           morph must not reset it to the collapsed server default. */
+        data-preserve-attr="style"
       >
         <header
           id="dev-ui-drag"
