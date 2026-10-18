@@ -72,7 +72,7 @@ function renderEvent(version: number): string {
   const rows = Array.from(
     { length: 2000 },
     (_, row) =>
-      `data: elements <li id="item-${row}">Assignment ${row} due in ${(row * 7) % 30} days</li>`,
+      `data: elements <li id="item-${row}">Item ${row} added ${(row * 7) % 30} days ago</li>`,
   );
   return `event: datastar-patch-elements\ndata: elements <p>render ${version}</p>\n${rows.join("\n")}\n\n`;
 }

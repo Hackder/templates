@@ -6,9 +6,9 @@ import type { Version } from "../version";
 // as a render on its stream. The control's loading indicator
 // (`data-indicator`) ends with the answer, so the answer waits until the
 // stream has emitted the change: `answerWhenEmitted(context, sessionId,
-// version)`, where `version` is what the action's last `dispatch`,
-// `mutateView` or other change returned (src/version.ts). An action that
-// changed nothing answers at once.
+// version)`, where `version` is what the action's last change returned: a
+// writer of src/state.ts, `mutateView`, or a device change
+// (src/version.ts). An action that changed nothing answers at once.
 //
 // A stream records a version once the render it started at that version is
 // written to its response (`StreamEmission.emitted`). Written means handed

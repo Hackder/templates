@@ -141,8 +141,9 @@ if (nativeStartViewTransition) {
   };
 }
 
-// Cross-document transitions (@view-transition in BaseLayout) never go
-// through startViewTransition — skip those at snapshot time instead.
+// Cross-document transitions (should a stylesheet opt in with
+// @view-transition) never go through startViewTransition: skip those at
+// snapshot time instead.
 window.addEventListener("pageswap", (event) => {
   if (event.viewTransition && softwareKeyboardOpen()) {
     event.viewTransition.skipTransition();
