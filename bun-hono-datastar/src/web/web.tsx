@@ -15,8 +15,8 @@ import { items } from "../schema";
 import { increment, readState } from "../state";
 import { exhaustiveCheck } from "../utils";
 import { type AppEnv, authGate, mountAuth } from "./auth";
+import { busyActions } from "./busy";
 import { ReloadTab } from "./connection";
-import { answerWhenEmitted } from "./emission";
 import { Layout } from "./layout";
 import { CounterPage } from "./page";
 import { SettingsView, SignedOutView } from "./settings";
@@ -26,10 +26,8 @@ import { streamUpdates } from "./updates";
 // The web layer reads state and renders it; it changes nothing itself
 // except per-session view state. Shared changes go through src/state.ts's
 // writers. Every action answers 204 and the change reaches the browser
-// through the tab's /updates stream, like every other change; an action
-// that changed something answers once the stream has emitted it
-// (`answerWhenEmitted`, ./emission), so its loading indicator lasts until
-// then.
+// through the tab's /updates stream, like every other change; so does the
+// end of its control's busy state (./busy).
 
 /**
  * Datastar evaluates its data-* expressions with `Function`, hence
@@ -249,13 +247,17 @@ export function createApp({ passwordHash }: AppOptions): Hono<AppEnv> {
 
   // ---------------------------------------------------------------------------
   // Actions: validate, then change the state or the view state, and
-  // answer 204 once the tab's stream has emitted the change.
+  // answer 204.
   // ---------------------------------------------------------------------------
 
-  app.post("/actions/increment", async (context) => {
-    const sessionId = await sessionOf(context.req);
-    const version = increment();
-    return await answerWhenEmitted(context, sessionId, version);
+  // Every action, the ones ./auth mounts below included: one sent from a
+  // busy control ends its busy state on the tab's stream when it is done,
+  // and a retry of it (same request id) is not run again.
+  app.use("/actions/*", busyActions());
+
+  app.post("/actions/increment", (context) => {
+    increment();
+    return context.body(null, 204);
   });
 
   if (passwordHash !== undefined) {

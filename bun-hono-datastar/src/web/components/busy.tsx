@@ -2,11 +2,12 @@ import type { PropsWithChildren } from "hono/jsx";
 import { cn } from "../../utils";
 import { Icon, type IconKind } from "./icon";
 
-// The marks for work in flight. A button is busy while its request runs: it
-// names a local signal in `data-indicator` (true while the request is in
-// flight) and reflects it as `data-attr:aria-busy={`$${signal} && 'true'`}`.
-// The `busy:` variant (src/input.css) styles the button and everything in it
-// from that attribute, and the parts below swap to the <Spinner>.
+// The marks for work in flight. A button is busy from its click until its
+// action's result is on the page: it runs the action with `busy(...).post`
+// and reflects its state as `data-attr:aria-busy={busy(...).aria}`
+// (src/web/post.ts, src/web/busy.ts). The `busy:` variant (src/input.css)
+// styles the button and everything in it from that attribute, and the parts
+// below swap to the <Spinner>.
 
 /** Phosphor's circle-notch, turning. */
 export function Spinner({ class: className }: { class?: string }) {

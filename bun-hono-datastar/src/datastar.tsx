@@ -130,6 +130,22 @@ export class DatastarEventSender {
     });
   }
 
+  /**
+   * An event of our own, for the browser's watcher of that name (see
+   * `watcher` in static/script.js): Datastar hands every event named
+   * `datastar-*` to the watcher registered under that name, its data lines
+   * as `key value` arguments.
+   */
+  public async watcherEvent(
+    event: `datastar-${string}`,
+    args: Record<string, string>,
+  ): Promise<void> {
+    await this.#send({
+      event,
+      dataLines: Object.entries(args).map(([key, value]) => `${key} ${value}`),
+    });
+  }
+
   async #send({ event, dataLines }: SseEvent): Promise<void> {
     const text = `event: ${event}\n${dataLines.map((line) => `data: ${line}`).join("\n")}\n\n`;
     // One write per event: the event goes out whole, as one chunk.

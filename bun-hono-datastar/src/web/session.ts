@@ -3,7 +3,6 @@ import type { HonoRequest } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod/v4";
 import { readSignalsRequired } from "../datastar";
-import { type Version, advanceVersion } from "../version";
 
 // Per-session UI state. A view session is one browser tab: the page load
 // mints an id, and every action and the /updates stream carry it as a
@@ -171,31 +170,24 @@ export function subscribeView(
   return () => listeners.delete(listener);
 }
 
-/**
- * The only way view state changes; re-renders just that session. Returns
- * the change's version (src/version.ts), which the action that made it
- * waits to see written to the tab (./emission).
- */
+/** The only way view state changes; re-renders just that session. */
 export function mutateView(
   session: ViewSession,
   fn: (view: ViewState) => void,
-): Version {
+): void {
   fn(session.view);
-  const version = advanceVersion();
   for (const [listener, id] of listeners) {
     if (id === session.id) {
       listener();
     }
   }
-  return version;
 }
 
 export const sessionSignals = z.object({ sessionid: z.string().min(1) });
 
 /**
- * The session id every action and the stream carry as a signal, for an
- * action that does not touch view state (it only answers once the tab's
- * stream has emitted its change). One that does uses `viewSessionOf`.
+ * The session id every action and the stream carry as a signal. An action
+ * that changes view state uses `viewSessionOf`.
  */
 export async function sessionOf(req: HonoRequest): Promise<string> {
   return (await readSignalsRequired(req, sessionSignals)).sessionid;

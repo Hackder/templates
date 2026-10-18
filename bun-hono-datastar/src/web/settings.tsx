@@ -3,7 +3,7 @@ import { cn } from "../utils";
 import { BusyIcon, BusyLabel } from "./components/busy";
 import { Icon, type IconKind } from "./components/icon";
 import { LivePage } from "./layout";
-import { indicator, post } from "./post";
+import { busy } from "./post";
 
 // The settings page (/settings): the browsers signed in to this app, when
 // the password gate is on. Like every page it is one function of state,
@@ -86,7 +86,7 @@ function Devices({ gate }: { gate: DevicesView }) {
   const { devices, currentDeviceId } = gate;
   const now = Temporal.Now.instant();
   const others = devices.filter((d) => d.id !== currentDeviceId).length;
-  const revokingOthers = indicator("revoke-others");
+  const revokingOthers = busy("revoke-others");
   return (
     <section id="devices" aria-labelledby="devices-title">
       <h2 id="devices-title" class="text-lg font-semibold">
@@ -98,7 +98,7 @@ function Devices({ gate }: { gate: DevicesView }) {
       <ul class="mt-4 divide-y border-y">
         {devices.map((device) => {
           const current = device.id === currentDeviceId;
-          const pending = indicator("device", device.id);
+          const pending = busy("device", device.id);
           return (
             <li
               id={`device-${device.id}`}
@@ -135,9 +135,8 @@ function Devices({ gate }: { gate: DevicesView }) {
                 <button
                   type="button"
                   class={cn(ROW_BUTTON, "gap-1.5")}
-                  data-indicator={pending}
-                  data-on:click={`!$${pending} && ${post("/actions/sign-out")}`}
-                  data-attr:aria-busy={`$${pending} && 'true'`}
+                  data-on:click={pending.post("/actions/sign-out")}
+                  data-attr:aria-busy={pending.aria}
                 >
                   <BusyIcon icon="sign-out" class="text-sm" />
                   Sign out
@@ -146,9 +145,10 @@ function Devices({ gate }: { gate: DevicesView }) {
                 <button
                   type="button"
                   class={ROW_BUTTON}
-                  data-indicator={pending}
-                  data-on:click={`!$${pending} && ${post("/actions/revoke-device", [["device", device.id]])}`}
-                  data-attr:aria-busy={`$${pending} && 'true'`}
+                  data-on:click={pending.post("/actions/revoke-device", [
+                    ["device", device.id],
+                  ])}
+                  data-attr:aria-busy={pending.aria}
                 >
                   <BusyLabel label="Revoke" />
                 </button>
@@ -162,9 +162,8 @@ function Devices({ gate }: { gate: DevicesView }) {
           <button
             type="button"
             class={ROW_BUTTON}
-            data-indicator={revokingOthers}
-            data-on:click={`!$${revokingOthers} && ${post("/actions/revoke-other-devices")}`}
-            data-attr:aria-busy={`$${revokingOthers} && 'true'`}
+            data-on:click={revokingOthers.post("/actions/revoke-other-devices")}
+            data-attr:aria-busy={revokingOthers.aria}
           >
             <BusyLabel label="Sign out everywhere else" />
           </button>

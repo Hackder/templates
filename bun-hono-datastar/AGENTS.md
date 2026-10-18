@@ -17,15 +17,14 @@ src/compress.ts       gzip / brotli middleware; per-connection SSE compression
 src/assets.ts         content hashes for static URLs (`?v=`) and Cache-Control
 src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
 src/state.ts          the app's shared state and its only writer
-src/version.ts        one version counter for every renderable change
 src/auth/             device sessions, login rate limiter, the password (opt-in)
 src/web/web.tsx       `createApp`: security headers, middleware, routes, actions
 src/web/layout.tsx    the document every page shares
 src/web/page.tsx      the example page (the counter)
 src/web/updates.ts    each tab's /updates stream: re-renders the page on change
 src/web/session.ts    per-tab view state (`sessionid` signal), `mutateView`
-src/web/emission.ts   `answerWhenEmitted`: an action answers once it is shown
-src/web/post.ts       `post` and `indicator` helpers for Datastar actions
+src/web/busy.ts       busy controls: request ids, their "done" word on the stream
+src/web/post.ts       `post` and `busy` helpers for Datastar actions
 src/web/connection.tsx the stream: retried forever, its status slip, tab reload
 src/web/auth.tsx      the login gate, /login, sign-out and device revocation
 src/web/settings.tsx  the settings page: signed-in devices
@@ -37,20 +36,20 @@ e2e/                  Playwright tests; one server and database per worker
 
 A page is server-rendered JSX, one function of state. The dataflow rule:
 **only `src/state.ts` mutates the shared state**, through its private
-`mutate`, which is synchronous, advances the version (`src/version.ts`) and
-notifies every tab's stream. The web layer only reads state (`readState`),
-calls those writers, and changes its own per-tab view state
-(`mutateView`). An action is a `POST /actions/*` that reads its signals with
-`readSignalsRequired` and a zod schema, makes its change and answers 204;
-the change reaches the browser because every change re-renders the whole
-page on each tab's `/updates` stream, which Datastar morphs in. A writer
-and `mutateView` return the change's version, and an action that changed
-something answers with `answerWhenEmitted` (`src/web/emission.ts`), once
-its tab's stream has written that version, so its `data-indicator` lasts
-until the change is shown. Datastar retries a POST after a network error,
-so an action may run twice: commands state their intent where natural (an
-explicit target value or id, never a toggle), and request ids will make
-every busy action safe to repeat (that mechanism lands with the busy port).
+`mutate`, which is synchronous and notifies every tab's stream. The web
+layer only reads state (`readState`), calls those writers, and changes its
+own per-tab view state (`mutateView`). An action is a `POST /actions/*`
+that reads its signals with `readSignalsRequired` and a zod schema, makes
+its change and answers 204; the change reaches the browser because every
+change re-renders the whole page on each tab's `/updates` stream, which
+Datastar morphs in. A control's busy state (its spinner) ends the same
+way: each click is a request with its own id (`busy(...)` in
+`src/web/post.ts`, `@busyPost` in `static/script.js`), and the tab's
+stream says the id is done after the render with the result, and again on
+every reconnect (`src/web/busy.ts`). Datastar retries a request whose
+answer was lost, so commands are safe to repeat: they state their intent
+where natural (an explicit target value or id, never a toggle), and a busy
+action's repeated request id is not run again.
 
 The password gate is opt-in: with `AUTH_PASSWORD_HASH` set, `authGate`
 (`src/web/auth.tsx`) runs before every route and only `PUBLIC_ROUTES` skip

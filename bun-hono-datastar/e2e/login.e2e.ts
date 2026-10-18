@@ -36,10 +36,15 @@ test("signing in, using the app, revoking a device and signing out", async ({
     await page.getByRole("link", { name: "Counter" }).click();
     const heading = page.getByRole("heading", { name: /^Count: \d+$/ });
     const start = Number((await heading.textContent())?.replace(/\D/g, ""));
-    await page.getByRole("button", { name: "Increment" }).click();
-    await expect(
-      page.getByRole("heading", { name: `Count: ${start + 1}`, exact: true }),
-    ).toBeVisible();
+    const increment = page.getByRole("button", { name: "Increment" });
+    await increment.click();
+    // Not busy any more only once the new count is on the page.
+    await expect(increment).not.toHaveAttribute("aria-busy");
+    expect(
+      await page
+        .getByRole("heading", { name: `Count: ${start + 1}`, exact: true })
+        .isVisible(),
+    ).toBe(true);
     await page.getByRole("link", { name: "Settings" }).click();
   });
 

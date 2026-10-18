@@ -25,8 +25,8 @@
   /*
    * A busy button's look (src/web/components/busy.tsx): the spinner fades in
    * and what it replaces fades out (opacity only, so a label stays the
-   * button's accessible name), only once the request has run for 200 ms. A
-   * quicker request drops aria-busy during the delay, the animation goes with
+   * button's accessible name), only once the action has run for 200 ms. A
+   * quicker action drops aria-busy during the delay, the animation goes with
    * it, and nothing on screen ever changed.
    */
   --animate-busy-in: busy-in 120ms var(--ease-out) 200ms both;

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { BUSY_HEADER, BUSY_ID_HEADER } from "./busy";
 import { createApp } from "./web";
 
 // The app without the password gate; src/web/auth.test.ts covers it with.
@@ -14,19 +15,25 @@ describe("app", () => {
     expect(body).toMatch(/\d+ items stored in the last 24 hours/);
   });
 
-  test("an action answers 204; the change shows in the next render", async () => {
+  test("an action answers 204 and runs once per request id; the change shows in the next render", async () => {
     const page = await (await app.request("/")).text();
     const sessionid = /sessionid&quot;:&quot;([0-9a-f-]+)/.exec(page)?.[1];
     expect(sessionid).toBeDefined();
     const before = Number(/Count: (\d+)/.exec(page)?.[1]);
 
-    // No stream is open for this tab, so the answer does not wait.
-    const response = await app.request("/actions/increment", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionid }),
-    });
-    expect(response.status).toBe(204);
+    // The button's click, then Datastar's retry of it (same request id).
+    for (let i = 0; i < 2; i++) {
+      const response = await app.request("/actions/increment", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          [BUSY_HEADER]: "increment",
+          [BUSY_ID_HEADER]: "click1",
+        },
+        body: JSON.stringify({ sessionid }),
+      });
+      expect(response.status).toBe(204);
+    }
     expect(await (await app.request("/")).text()).toContain(
       `Count: ${before + 1}`,
     );
@@ -35,7 +42,11 @@ describe("app", () => {
   test("rejects invalid signals", async () => {
     const response = await app.request("/actions/increment", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        [BUSY_HEADER]: "increment",
+        [BUSY_ID_HEADER]: "click1",
+      },
       body: JSON.stringify({ sessionid: 2 }),
     });
     expect(response.status).toBe(400);

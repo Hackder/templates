@@ -1,4 +1,14 @@
-import { attribute, action, root } from "./datastar-1.0.4.js";
+import {
+  action,
+  actions,
+  attribute,
+  getPath,
+  mergePatch,
+  mergePaths,
+  root,
+  watcher,
+} from "./datastar-1.0.4.js";
+import { finishedBusy } from "./busy.js";
 
 attribute({
   name: "hotreload",
@@ -95,6 +105,114 @@ action({
     history.replaceState(state, "", url.toString());
 
     document.getElementById(hash)?.scrollIntoView();
+  },
+});
+
+// A control's action, in place of `data-indicator` + `@post`:
+// `@busyPost('name', '/actions/…', options)`. The control is busy while the
+// signal `busy.<name>` is there (`'<name>' in $busy`, for its aria-busy).
+// A click while it is busy is ignored. Otherwise this makes the click a
+// request id, sets the signal to it and posts like `@post`, sending the name
+// and the id in the Datastar-Busy and Datastar-Busy-Id headers (Datastar's
+// retries send the same id, so the server runs the action once). The signal
+// stays on after a 2xx answer, which only says the action was taken: the
+// server says the id is done over the tab's /updates stream, after the
+// render with the action's result (src/web/busy.ts), so the spinner ends
+// once the change is on the page. Only a failed action is cleared here: an
+// error status (Datastar's "error" event for this element), or the network
+// after Datastar's retries. There is no timeout: a spinner still turning
+// with a live stream is a server bug, and should be seen.
+//
+// Datastar's indicator counts its own fetch events instead; that ends the
+// spinner with the answer, which may come before or after the render.
+
+// Every control reads `$busy`, so it is an object from the start; a missing
+// one would be created as "" by the first read.
+mergePatch({ busy: {} }, { ifMissing: true });
+
+/** A request id: random, and made without a secure context (plain http). */
+function requestId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
+action({
+  name: "busyPost",
+  /**
+   * @param {import("./datastar-1.0.4.js").ActionContext} ctx
+   * @param {string} name
+   * @param {string} url
+   * @param {Record<string, unknown>} [options] `@post`'s options
+   */
+  async apply(ctx, name, url, options = {}) {
+    const path = `busy.${name}`;
+    if (typeof getPath(path) === "string") {
+      return;
+    }
+    const id = requestId();
+    mergePaths([[path, id]]);
+    let failed = false;
+    /** @param {Event} event */
+    function onFetch(event) {
+      if (
+        event instanceof CustomEvent &&
+        event.detail?.el === ctx.el &&
+        event.detail.type === "error"
+      ) {
+        failed = true;
+      }
+    }
+    document.addEventListener("datastar-fetch", onFetch);
+    try {
+      const post = actions["post"];
+      if (post === undefined) {
+        throw new Error("Datastar's @post action is not loaded");
+      }
+      const headers = /** @type {Record<string, string> | undefined} */ (
+        options["headers"]
+      );
+      await post(ctx, url, {
+        ...options,
+        headers: {
+          ...headers,
+          "Datastar-Busy": name,
+          "Datastar-Busy-Id": id,
+        },
+        // Another post to the same URL must not cancel this one: nothing
+        // would clear its signal then.
+        requestCancellation: "disabled",
+      });
+    } catch (error) {
+      failed = true;
+      throw error;
+    } finally {
+      document.removeEventListener("datastar-fetch", onFetch);
+      // Only this click's own state: a newer click may hold the signal.
+      if (failed && getPath(path) === id) {
+        mergePaths([[path, null]]);
+      }
+    }
+  },
+});
+
+// The stream's word that busy requests are done (`datastar-busy-done`, data
+// `ids <id> <id>…`, src/web/busy.ts): each control that still holds one of
+// them is no longer busy. A custom event for a watcher of our own rather
+// than a signal patch: the ids are a message, not state, so nothing has to
+// be removed from the signals afterwards, and the comparison with the
+// control's current id happens here, at the moment the word arrives.
+watcher({
+  name: "datastar-busy-done",
+  apply(_ctx, { ids }) {
+    if (typeof ids !== "string") {
+      return;
+    }
+    const clears = finishedBusy(getPath("busy"), ids.split(" "));
+    if (clears.length > 0) {
+      mergePaths(clears.map((name) => [`busy.${name}`, null]));
+    }
   },
 });
 

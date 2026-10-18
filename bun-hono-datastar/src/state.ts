@@ -1,10 +1,7 @@
-import { type Version, advanceVersion } from "./version";
-
 // The app's shared state and its only writer. Everything else reads it
 // (`readState`) or asks for a change through the functions below; every
-// change is one synchronous mutation that advances the version
-// (src/version.ts) and notifies the listeners, which are the tabs' /updates
-// streams. Kept in memory: a real app loads it on boot and writes changes
+// change is one synchronous mutation that notifies the listeners, which
+// are the tabs' /updates streams. Kept in memory: a real app loads it on boot and writes changes
 // to the database after the mutation, never from inside it.
 
 export interface State {
@@ -27,22 +24,20 @@ export function subscribe(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-function mutate(fn: (state: State) => void): Version {
+function mutate(fn: (state: State) => void): void {
   fn(state);
-  const version = advanceVersion();
   for (const listener of listeners) {
     listener();
   }
-  return version;
 }
 
 /**
- * Adds one to the count. Like every writer here, returns the change's
- * version, which the action that asked for it waits to see written to its
- * tab (src/web/emission.ts).
+ * Adds one to the count. A plain increment, not safe to repeat by itself:
+ * its action runs under a busy request id (src/web/busy.ts), which keeps a
+ * retried request from running it twice.
  */
-export function increment(): Version {
-  return mutate((s) => {
+export function increment(): void {
+  mutate((s) => {
     s.count += 1;
   });
 }

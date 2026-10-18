@@ -25,9 +25,7 @@ import { MAX_PASSWORD_LENGTH } from "../auth/password-limits";
 import { isDatastarRequest } from "../datastar";
 import { env } from "../env";
 import { logger } from "../logger";
-import { answerWhenEmitted } from "./emission";
 import { SignedOutLayout } from "./layout";
-import { sessionOf } from "./session";
 
 // The opt-in password gate (src/auth/password.ts). When it is on, one
 // middleware, `authGate`, runs before every route: it turns away cross-site
@@ -374,36 +372,28 @@ export function mountAuth(app: Hono<AppEnv>, passwordHash: string): void {
     return context.redirect(next, 303);
   });
 
-  // Signing out and revoking answer 204 like every action, once the tab's
-  // stream has emitted the change (./emission); the device's open streams
-  // see it gone and send their pages to the login form. Each is safe to
-  // repeat (Datastar retries a POST after a network error): a revoked id is
-  // ignored, and a repeated sign-out finds its device gone and gets the
-  // gate's 401.
-  app.post("/actions/sign-out", async (context) => {
-    const sessionId = await sessionOf(context.req);
-    const version = revokeDevice(currentDevice(context).id);
+  // Signing out and revoking answer 204 like every action; the device's
+  // open streams see it gone and send their pages to the login form. Each
+  // is safe to repeat (Datastar retries a POST after a network error): a
+  // revoked id is ignored, and a repeated sign-out finds its device gone
+  // and gets the gate's 401.
+  app.post("/actions/sign-out", (context) => {
+    revokeDevice(currentDevice(context).id);
     clearDeviceCookie(context);
-    return version === null
-      ? context.body(null, 204)
-      : await answerWhenEmitted(context, sessionId, version);
+    return context.body(null, 204);
   });
 
-  app.post("/actions/revoke-device", async (context) => {
-    const sessionId = await sessionOf(context.req);
+  app.post("/actions/revoke-device", (context) => {
     const id = z.uuid().safeParse(context.req.query("device"));
-    const version = id.success ? revokeDevice(id.data) : null;
-    return version === null
-      ? context.body(null, 204)
-      : await answerWhenEmitted(context, sessionId, version);
+    if (id.success) {
+      revokeDevice(id.data);
+    }
+    return context.body(null, 204);
   });
 
-  app.post("/actions/revoke-other-devices", async (context) => {
-    const sessionId = await sessionOf(context.req);
-    const version = revokeOtherDevices(currentDevice(context).id);
-    return version === null
-      ? context.body(null, 204)
-      : await answerWhenEmitted(context, sessionId, version);
+  app.post("/actions/revoke-other-devices", (context) => {
+    revokeOtherDevices(currentDevice(context).id);
+    return context.body(null, 204);
   });
 }
 

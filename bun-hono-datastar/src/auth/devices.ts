@@ -4,7 +4,6 @@ import { eq, inArray } from "drizzle-orm";
 import type { Db } from "../db";
 import { logger } from "../logger";
 import { devices as devicesTable } from "../schema";
-import { type Version, advanceVersion } from "../version";
 
 // Device sessions: one per signed-in browser, kept until it signs out, is
 // revoked from the settings page, or goes unused for DEVICE_LIFETIME. Not
@@ -57,16 +56,11 @@ export function subscribeDevices(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-/**
- * The device list is rendered (settings), so every change advances the
- * version (src/version.ts); returns the version it produced.
- */
-function notify(): Version {
-  const version = advanceVersion();
+/** The device list is rendered (settings): every change re-renders. */
+function notify(): void {
   for (const listener of listeners) {
     listener();
   }
-  return version;
 }
 
 let writeChain: Promise<void> = Promise.resolve();
@@ -116,21 +110,19 @@ function expired(device: Device, now: Temporal.Instant): boolean {
   );
 }
 
-/** The version of the removal, or null when there was nothing to remove. */
-function remove(hashes: string[]): Version | null {
+function remove(hashes: string[]): void {
   if (hashes.length === 0) {
-    return null;
+    return;
   }
   for (const hash of hashes) {
     devices.delete(hash);
   }
-  const version = notify();
+  notify();
   persist(async (db) => {
     await db
       .delete(devicesTable)
       .where(inArray(devicesTable.tokenHash, hashes));
   });
-  return version;
 }
 
 /** The device a cookie's token belongs to, or null (unknown or expired). */
@@ -243,19 +235,16 @@ export function touchDevice(
   return true;
 }
 
-/**
- * Signs a device out; unknown ids (a stale page) are ignored. Returns the
- * change's version, null when nothing changed.
- */
-export function revokeDevice(id: string): Version | null {
-  return remove(
+/** Signs a device out; unknown ids (a stale page) are ignored. */
+export function revokeDevice(id: string): void {
+  remove(
     [...devices.values()].filter((d) => d.id === id).map((d) => d.tokenHash),
   );
 }
 
-/** "Sign out everywhere else"; returns like `revokeDevice`. */
-export function revokeOtherDevices(keepId: string): Version | null {
-  return remove(
+/** "Sign out everywhere else". */
+export function revokeOtherDevices(keepId: string): void {
+  remove(
     [...devices.values()]
       .filter((d) => d.id !== keepId)
       .map((d) => d.tokenHash),

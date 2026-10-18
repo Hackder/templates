@@ -10,7 +10,7 @@ import type { State } from "../state";
 import { BusyIcon } from "./components/busy";
 import { Icon } from "./components/icon";
 import { LivePage } from "./layout";
-import { indicator, post } from "./post";
+import { busy } from "./post";
 
 // The example page: the shared counter (src/state.ts), and a database query
 // bounded by a Temporal instant. Like every page it is one function of
@@ -48,7 +48,7 @@ export async function CounterPage({ state }: { state: Readonly<State> }) {
   const recentItems = await countItemsSince(
     Temporal.Now.instant().subtract(RECENT_ITEMS_WINDOW),
   );
-  const incrementing = indicator("increment");
+  const incrementing = busy("increment");
 
   return (
     <LivePage class="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-8 px-6">
@@ -84,14 +84,13 @@ export async function CounterPage({ state }: { state: Readonly<State> }) {
           Rendered at {Temporal.Now.instant().toString()}
         </p>
       </div>
-      {/* Busy until the new count is on this tab's stream: past 200 ms the
+      {/* Busy until the new count is on this tab's page: past 200 ms the
           icon turns into a spinner (see ./components/busy), and a second
           click meanwhile is ignored. */}
       <button
         type="button"
-        data-indicator={incrementing}
-        data-on:click={`!$${incrementing} && ${post("/actions/increment")}`}
-        data-attr:aria-busy={`$${incrementing} && 'true'`}
+        data-on:click={incrementing.post("/actions/increment")}
+        data-attr:aria-busy={incrementing.aria}
         class="bg-primary text-primary-foreground hover:bg-primary/90 flex w-fit items-center gap-2 rounded-full px-6 py-3 font-semibold transition"
       >
         <BusyIcon icon="plus" />
