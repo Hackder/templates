@@ -163,3 +163,48 @@ document.addEventListener("datastar-fetch", (event) => {
     window.location.reload();
   }
 });
+
+// Signed out (the device session expired or was revoked while this page was
+// open): the server answers Datastar's requests with 401, which Datastar
+// reports as a fetch error. Go to the login form, which brings the user back
+// here afterwards.
+document.addEventListener("datastar-fetch", (event) => {
+  if (!(event instanceof CustomEvent)) {
+    return;
+  }
+  const detail = event.detail;
+  if (detail?.type === "error" && detail.argsRaw?.status === "401") {
+    const next = window.location.pathname + window.location.search;
+    window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+  }
+});
+
+// The live connection: the tab's /updates stream, opened by #app's data-init
+// (OPEN_UPDATES in src/web/connection.tsx). Datastar reports it through the
+// same events: "retrying" when an attempt failed and another is scheduled,
+// each of the stream's own events as it arrives, and "finished" once it has
+// stopped for good. Its state goes on the root element, which the stream's
+// morphs never touch, and the connection slip shows from there (CSS only,
+// including the delay that keeps a blip from flashing it). Each (re)opened
+// stream starts with a render, so its first event means "live again".
+document.addEventListener("datastar-fetch", (event) => {
+  if (!(event instanceof CustomEvent)) {
+    return;
+  }
+  /** @type {{ type?: unknown; el?: unknown } | null | undefined} */
+  const detail = event.detail;
+  if (!(detail?.el instanceof Element) || detail.el.id !== "app") {
+    return;
+  }
+  const root = document.documentElement;
+  if (detail.type === "retrying") {
+    root.dataset["connection"] = "reconnecting";
+  } else if (detail.type === "finished") {
+    root.dataset["connection"] = "lost";
+  } else if (
+    typeof detail.type === "string" &&
+    detail.type.startsWith("datastar-")
+  ) {
+    delete root.dataset["connection"];
+  }
+});

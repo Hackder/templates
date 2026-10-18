@@ -8,7 +8,7 @@ import {
 } from "../utils";
 import type { State } from "../state";
 import { BusyIcon } from "./components/busy";
-import { OPEN_UPDATES } from "./connection";
+import { ConnectionSlip, OPEN_UPDATES } from "./connection";
 import { indicator, post } from "./post";
 
 // The example page: the shared counter (src/state.ts), and a database query
@@ -91,6 +91,7 @@ export async function CounterPage({ state }: { state: Readonly<State> }) {
         <BusyIcon icon="plus" />
         Increment
       </button>
+      <ConnectionSlip />
     </main>
   );
 }

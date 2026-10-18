@@ -25,7 +25,7 @@ src/web/updates.ts    each tab's /updates stream: re-renders the page on change
 src/web/session.ts    per-tab view state (`sessionid` signal), `mutateView`
 src/web/emission.ts   `answerWhenEmitted`: an action answers once it is shown
 src/web/post.ts       `post` and `indicator` helpers for Datastar actions
-src/web/connection.tsx the stream's `data-init`, reload of a forgotten tab
+src/web/connection.tsx the stream: retried forever, its status slip, tab reload
 src/web/components/   shared JSX components (icons, busy spinners)
 static/               browser files: Datastar, script.js, icons, built styles
 tools/logview/        local log and trace viewer for `logs/log.ndjson`

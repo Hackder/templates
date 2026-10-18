@@ -110,6 +110,44 @@
 /* `busy:` a button with aria-busy="true", or anything inside it. */
 @custom-variant busy (&:is(button[aria-busy="true"], button[aria-busy="true"] *));
 
+/*
+ * The live connection (src/web/connection.tsx): static/script.js sets
+ * data-connection on the root while the tab's /updates stream is down,
+ * "reconnecting" or "lost".
+ */
+@custom-variant reconnecting (:root[data-connection="reconnecting"] &);
+@custom-variant disconnected (:root[data-connection="lost"] &);
+
+/*
+ * The connection slip: hidden while the stream is live. When it goes down
+ * the slip rises in only after 500 ms, so a blip that reconnects sooner
+ * (the transition is cancelled before it starts) never shows; it leaves at
+ * once when the stream is back.
+ */
+@utility connection-slip {
+  visibility: hidden;
+  opacity: 0;
+  translate: 0 0.5rem;
+  transition:
+    opacity 150ms var(--ease-out),
+    translate 150ms var(--ease-out),
+    visibility 0s 150ms;
+
+  :root[data-connection] & {
+    visibility: visible;
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 200ms var(--ease-out) 500ms,
+      translate 220ms var(--ease-out) 500ms,
+      visibility 0s 500ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    translate: none !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
