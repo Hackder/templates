@@ -14,6 +14,8 @@ bun run dev
 `bun run dev` creates a `.env` on first run with every variable from
 `src/env.ts` commented out next to its default. Uncomment a line to override it.
 There is no `.env.example`; the schema in `src/env.ts` is the documentation.
+The server listens on `127.0.0.1` only; set `HOST=0.0.0.0` to reach it from
+another device on the network (the Docker image does).
 
 Run `bun run tailwind` in another terminal while changing styles, and
 `bun run logview` for the local log and trace viewer (see below).

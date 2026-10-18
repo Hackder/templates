@@ -42,6 +42,9 @@ COPY --from=build /usr/src/app/static/styles.css ./static/styles.css
 # The app directory is not writable by the bun user; logs go to stdout and,
 # when configured, Axiom.
 ENV LOG_JSON_FILE=disabled
+# The app listens on loopback unless told otherwise; in a container it must
+# be reachable from outside.
+ENV HOST=0.0.0.0
 
 # Only these need to be writable by the bun user; source and node_modules are
 # world-readable, so no recursive chown needed.

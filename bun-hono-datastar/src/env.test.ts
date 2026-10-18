@@ -23,6 +23,7 @@ describe("renderDefaultDotEnv", () => {
   test("renders defaults", () => {
     expect(rendered).toContain("# TURSO_DATABASE_URL=file:./data/app.db\n");
     expect(rendered).toContain("# PORT=3000\n");
+    expect(rendered).toContain("# HOST=127.0.0.1\n");
     expect(rendered).toContain("# CI=false\n");
     expect(rendered).toContain("# TURSO_AUTH_TOKEN=\n");
   });

@@ -18,6 +18,16 @@ export const envSchema = z.object({
 
   PORT: z.coerce.number().default(3000).describe("Port the app listens on"),
 
+  // Loopback by default, so a dev server is not reachable from the network
+  // unless asked for. The Dockerfile sets 0.0.0.0.
+  HOST: z
+    .string()
+    .min(1)
+    .default("127.0.0.1")
+    .describe(
+      "Address the app listens on: 127.0.0.1 only loopback, 0.0.0.0 every interface",
+    ),
+
   CI: stringBool
     .default(false)
     .describe("Set by CI providers; forbids test.only and trims E2E browsers"),

@@ -44,15 +44,28 @@ const server = Bun.serve({
     return new Response("Internal Server Error", { status: 500 });
   },
   development: env.NODE_ENV === "development",
+  hostname: env.HOST,
   port: env.PORT,
   idleTimeout: 0,
 });
 
-const localUrl = server.url.toString().replace(/\/$/, "");
+// A wildcard address listens on every interface: the network ones and,
+// for the "Local" line, localhost. A specific address is printed as it is,
+// as "Network" unless it is a loopback one.
+const listensEverywhere = ["0.0.0.0", "::"].includes(env.HOST);
+const loopback = /^(localhost|127\.|::1$)/.test(env.HOST);
 const port = server.url.port === "" ? "80" : server.url.port;
-const listens: [string, string][] = [["Local", localUrl]];
+const listens: [string, string][] = listensEverywhere
+  ? [["Local", `${server.url.protocol}//localhost:${port}`]]
+  : [
+      [
+        loopback ? "Local" : "Network",
+        server.url.toString().replace(/\/$/, ""),
+      ],
+    ];
 
-for (const [ifaceName, infos] of Object.entries(os.networkInterfaces())) {
+const interfaces = listensEverywhere ? os.networkInterfaces() : {};
+for (const [ifaceName, infos] of Object.entries(interfaces)) {
   if (infos === undefined) {
     continue;
   }
