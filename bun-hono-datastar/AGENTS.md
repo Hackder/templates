@@ -74,6 +74,22 @@ bun run check
 
 Everything must pass!
 
+## Testing
+
+- Unit tests guard real contracts: behaviour a caller relies on and that
+  could plausibly break. Do not write a test for every behaviour.
+- When a library does the work (sanitizing HTML, parsing dates), write one
+  sanity test of our use of it. Do not re-test the library.
+- E2E tests are a few long user flows, each a story through the app with a
+  step per phase. Extend an existing flow rather than add a test per small
+  behaviour; small behaviours belong in unit tests.
+- No sleeps, grace delays or nudges as fixes, in tests or in code.
+  If something depends on order or timing, model the real mechanism with a
+  proper abstraction and assert that contract. A timing workaround is a
+  problem to report, not a fix.
+- Throwaway spikes, scripts and research artifacts go in the repo's
+  `scratch/` directory (gitignored), never in `/tmp`.
+
 ## Commands
 
 Execute everything repo command with bun directly. Don't use npx, bunx, pnpm dlx etc. Only run the commands
