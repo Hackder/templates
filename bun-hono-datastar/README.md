@@ -92,7 +92,8 @@ Axiom files the OpenTelemetry semantic-convention fields (`url.path`, `http.*`,
 
 ## Structure
 
-- `src/web/` is the web layer: `web.tsx` holds the Hono app and its routes, `layout.tsx` the shared document, `page.tsx` the minimal Datastar example.
+- `src/state.ts` owns the shared state; every change bumps `src/version.ts` and re-renders every open tab.
+- `src/web/` is the web layer: `web.tsx` holds the Hono app and its routes, `layout.tsx` the shared document, `page.tsx` the minimal Datastar example, `updates.ts` the per-tab `/updates` stream, `session.ts` the per-tab view state and `emission.ts` the "answer once shown" bookkeeping for actions.
 - `src/datastar.tsx` contains signal parsing and SSE helpers.
 - `src/db.ts` and `src/schema.ts` provide the Drizzle/libSQL baseline.
 - `src/db-instrument.ts` wraps the libSQL client so every query is a span.

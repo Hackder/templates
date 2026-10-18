@@ -1,12 +1,32 @@
 import { expect, test } from "./fixtures";
 
-test("updates server-rendered JSX through Datastar", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Count: 0" })).toBeVisible();
+test("every tab shows the shared count live", async ({ page, context }) => {
+  const other = await context.newPage();
 
-  await page.getByRole("button", { name: "Increment" }).click();
+  await test.step("both tabs load the page", async () => {
+    await page.goto("/");
+    await other.goto("/");
+    await expect(page.getByRole("heading", { name: "Count: 0" })).toBeVisible();
+    await expect(
+      other.getByRole("heading", { name: "Count: 0" }),
+    ).toBeVisible();
+  });
 
-  await expect(page.getByRole("heading", { name: "Count: 1" })).toBeVisible();
+  await test.step("a click re-renders the page over its stream", async () => {
+    const increment = page.getByRole("button", { name: "Increment" });
+    await increment.click();
+    await expect(page.getByRole("heading", { name: "Count: 1" })).toBeVisible();
+    // The post answered once the render was on the stream: not busy any more.
+    await expect(increment).not.toHaveAttribute("aria-busy", "true");
+  });
+
+  await test.step("the other tab gets the change without reloading", async () => {
+    await expect(
+      other.getByRole("heading", { name: "Count: 1" }),
+    ).toBeVisible();
+    await other.getByRole("button", { name: "Increment" }).click();
+    await expect(page.getByRole("heading", { name: "Count: 2" })).toBeVisible();
+  });
 });
 
 test("queries the database with a Temporal-derived bound", async ({ page }) => {

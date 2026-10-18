@@ -11,27 +11,29 @@ describe("app", () => {
     expect(body).toMatch(/\d+ items stored in the last 24 hours/);
   });
 
-  test("patches elements and signals", async () => {
-    const response = await app.request("/increment", {
+  test("an action answers 204; the change shows in the next render", async () => {
+    const page = await (await app.request("/")).text();
+    const sessionid = /sessionid&quot;:&quot;([0-9a-f-]+)/.exec(page)?.[1];
+    expect(sessionid).toBeDefined();
+    const before = Number(/Count: (\d+)/.exec(page)?.[1]);
+
+    // No stream is open for this tab, so the answer does not wait.
+    const response = await app.request("/actions/increment", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ count: 2 }),
+      body: JSON.stringify({ sessionid }),
     });
-    const body = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/event-stream");
-    expect(body).toContain("event: datastar-patch-elements");
-    expect(body).toContain("Count: 3");
-    expect(body).toContain("event: datastar-patch-signals");
-    expect(body).toContain('signals {"count":3}');
+    expect(response.status).toBe(204);
+    expect(await (await app.request("/")).text()).toContain(
+      `Count: ${before + 1}`,
+    );
   });
 
   test("rejects invalid signals", async () => {
-    const response = await app.request("/increment", {
+    const response = await app.request("/actions/increment", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ count: "two" }),
+      body: JSON.stringify({ sessionid: 2 }),
     });
     expect(response.status).toBe(400);
   });

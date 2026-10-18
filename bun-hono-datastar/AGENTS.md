@@ -16,21 +16,39 @@ src/logger/           spans, events and errors; a worker formats and ships them
 src/compress.ts       gzip / brotli middleware; per-connection SSE compression
 src/assets.ts         content hashes for static URLs (`?v=`) and Cache-Control
 src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
+src/state.ts          the app's shared state and its only writer
+src/version.ts        one version counter for every renderable change
 src/web/web.tsx       the Hono app: security headers, middleware, routes, actions
 src/web/layout.tsx    the document every page shares
 src/web/page.tsx      the example page (the counter)
+src/web/updates.ts    each tab's /updates stream: re-renders the page on change
+src/web/session.ts    per-tab view state (`sessionid` signal), `mutateView`
+src/web/emission.ts   `answerWhenEmitted`: an action answers once it is shown
+src/web/post.ts       `post` and `indicator` helpers for Datastar actions
+src/web/connection.tsx the stream's `data-init`, reload of a forgotten tab
 src/web/components/   shared JSX components (icons, busy spinners)
 static/               browser files: Datastar, script.js, icons, built styles
 tools/logview/        local log and trace viewer for `logs/log.ndjson`
 e2e/                  Playwright tests; one server and database per worker
 ```
 
-A page is server-rendered JSX. An interaction is a Datastar action: a
-route reads the page's signals with `readSignalsRequired` and a zod schema,
-and answers with `datastarSse`, patching elements and signals. Every request
-runs inside one owning `request` span (`withSpan` in `src/web/web.tsx`), so
-whatever a handler logs or `set()`s lands on that request's line and trace.
-Dev-only routes are mounted only when `NODE_ENV` is `development`; unset
+A page is server-rendered JSX, one function of state. The dataflow rule:
+**only `src/state.ts` mutates the shared state**, through its private
+`mutate`, which is synchronous, advances the version (`src/version.ts`) and
+notifies every tab's stream. The web layer only reads state (`readState`),
+calls those writers, and changes its own per-tab view state
+(`mutateView`). An action is a `POST /actions/*` that reads its signals with
+`readSignalsRequired` and a zod schema, makes its change and answers 204;
+the change reaches the browser because every change re-renders the whole
+page on each tab's `/updates` stream, which Datastar morphs in. A writer
+and `mutateView` return the change's version, and an action that changed
+something answers with `answerWhenEmitted` (`src/web/emission.ts`), once
+its tab's stream has written that version, so its `data-indicator` lasts
+until the change is shown.
+
+Every request runs inside one owning `request` span (`withSpan` in
+`src/web/web.tsx`), so whatever a handler logs or `set()`s lands on that
+request's line and trace. Dev-only routes are mounted only when `NODE_ENV` is `development`; unset
 means production, and `bun run dev` sets it.
 
 Styling uses only the tokens in `src/input.css`; the `shadcn/*` rules and

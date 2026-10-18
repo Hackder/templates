@@ -1,18 +1,30 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { etag } from "hono/etag";
 import { HTTPException } from "hono/http-exception";
-import { z } from "zod/v4";
 import { staticCacheControl } from "../assets";
 import { gzipCompress } from "../compress";
-import { datastarSse, readSignalsRequired } from "../datastar";
+import { datastarSse } from "../datastar";
 import { db } from "../db";
 import { devModeApp } from "../dev-mode";
 import { env } from "../env";
 import { logger, withSpan } from "../logger";
 import { items } from "../schema";
+import { increment, readState } from "../state";
+import { ReloadTab } from "./connection";
+import { answerWhenEmitted } from "./emission";
 import { Layout } from "./layout";
-import { Counter, RECENT_ITEMS_WINDOW, countItemsSince } from "./page";
+import { CounterPage } from "./page";
+import { type Page, openView, sessionOf } from "./session";
+import { streamUpdates } from "./updates";
+
+// The web layer reads state and renders it; it changes nothing itself
+// except per-session view state. Shared changes go through src/state.ts's
+// writers. Every action answers 204 and the change reaches the browser
+// through the tab's /updates stream, like every other change; an action
+// that changed something answers once the stream has emitted it
+// (`answerWhenEmitted`, ./emission), so its loading indicator lasts until
+// then.
 
 export const app = new Hono();
 
@@ -112,31 +124,54 @@ app.use(async (context, next) => {
   );
 });
 
-app.get("/", async (context) => {
-  const recentItems = await countItemsSince(
-    Temporal.Now.instant().subtract(RECENT_ITEMS_WINDOW),
-  );
+// ---------------------------------------------------------------------------
+// Pages and the stream
+// ---------------------------------------------------------------------------
 
-  return context.html(
-    <Layout signals={{ count: 0 }}>
-      <Counter count={0} recentItems={recentItems} />
+/**
+ * The tab's page, from the app state. With a second page, switch on
+ * `view.page` here (src/web/session.ts).
+ */
+function View() {
+  return <CounterPage state={readState()} />;
+}
+
+/**
+ * A page load: a new view session showing `page`. The only place a view
+ * session starts, so a tab the server forgot reloads to get here (see
+ * `streamUpdates`).
+ */
+async function pageResponse(context: Context, page: Page): Promise<Response> {
+  const session = openView({ page });
+  return await context.html(
+    <Layout sessionId={session.id}>
+      <View />
     </Layout>,
   );
+}
+
+app.get("/", async (context) => await pageResponse(context, "counter"));
+
+/** The tab's stream of page renders; see `streamUpdates`. */
+app.get("/updates", async (context) => {
+  const sessionId = await sessionOf(context.req);
+  return datastarSse(context, async (sender) => {
+    await streamUpdates(sessionId, sender, {
+      render: () => <View />,
+      reload: () => <ReloadTab />,
+    });
+  });
 });
 
-const counterSignals = z.object({ count: z.number().int().nonnegative() });
+// ---------------------------------------------------------------------------
+// Actions: validate, then change the state or the view state, and
+// answer 204 once the tab's stream has emitted the change.
+// ---------------------------------------------------------------------------
 
-app.post("/increment", async (context) => {
-  const { count } = await readSignalsRequired(context.req, counterSignals);
-  const recentItems = await countItemsSince(
-    Temporal.Now.instant().subtract(RECENT_ITEMS_WINDOW),
-  );
-  return datastarSse(context, async (sender) => {
-    await sender.patchElements(
-      <Counter count={count + 1} recentItems={recentItems} />,
-    );
-    await sender.patchSignals({ count: count + 1 });
-  });
+app.post("/actions/increment", async (context) => {
+  const sessionId = await sessionOf(context.req);
+  const version = increment();
+  return await answerWhenEmitted(context, sessionId, version);
 });
 
 if (env.NODE_ENV === "development") {

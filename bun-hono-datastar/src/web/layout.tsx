@@ -5,9 +5,9 @@ import { env } from "../env";
 
 /** The document every page shares: head, scripts and the dev overlay. */
 export function Layout({
-  signals,
+  sessionId,
   children,
-}: PropsWithChildren<{ signals: { count: number } }>) {
+}: PropsWithChildren<{ sessionId: string }>) {
   return (
     <html lang="en">
       <head>
@@ -40,7 +40,8 @@ export function Layout({
           src={`/static/script.js?v=${getFileHash("static/script.js")}`}
         ></script>
       </head>
-      <body data-signals={JSON.stringify(signals)}>
+      {/* The view session id is the one signal every request carries. */}
+      <body data-signals={JSON.stringify({ sessionid: sessionId })}>
         {children}
         {env.NODE_ENV === "development" && <DevMode />}
       </body>

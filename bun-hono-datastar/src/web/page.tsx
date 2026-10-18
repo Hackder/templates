@@ -6,18 +6,21 @@ import {
   exhaustiveCheck,
   instantToDateForInteropWithDrizzle,
 } from "../utils";
+import type { State } from "../state";
 import { BusyIcon } from "./components/busy";
+import { OPEN_UPDATES } from "./connection";
+import { indicator, post } from "./post";
 
-// The example page: a counter, and a database query bounded by a Temporal
-// instant.
+// The example page: the shared counter (src/state.ts), and a database query
+// bounded by a Temporal instant. Like every page it is one function of
+// state, rendered on load and again on every change over the tab's /updates
+// stream.
 
-export const RECENT_ITEMS_WINDOW = Temporal.Duration.from({ hours: 24 });
+const RECENT_ITEMS_WINDOW = Temporal.Duration.from({ hours: 24 });
 
 // Timestamp columns are `Date` on the Drizzle side, so comparing them against a
 // Temporal value needs the interop helper.
-export async function countItemsSince(
-  since: Temporal.Instant,
-): Promise<number> {
+async function countItemsSince(since: Temporal.Instant): Promise<number> {
   const [row] = await db
     .select({ total: countRows() })
     .from(items)
@@ -38,17 +41,18 @@ function counterToneClass(tone: CounterTone): string {
   }
 }
 
-interface CounterProps {
-  count: number;
-  recentItems: number;
-}
-
-export function Counter({ count, recentItems }: CounterProps) {
+export async function CounterPage({ state }: { state: Readonly<State> }) {
+  const { count } = state;
   const tone: CounterTone = count === 0 ? "idle" : "active";
+  const recentItems = await countItemsSince(
+    Temporal.Now.instant().subtract(RECENT_ITEMS_WINDOW),
+  );
+  const incrementing = indicator("increment");
 
   return (
     <main
-      id="counter"
+      id="app"
+      data-init={OPEN_UPDATES}
       class="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-8 px-6"
     >
       <div class="space-y-3">
@@ -74,14 +78,14 @@ export function Counter({ count, recentItems }: CounterProps) {
           Rendered at {Temporal.Now.instant().toString()}
         </p>
       </div>
-      {/* Busy while its post is in flight: past 200 ms the icon turns into a
-          spinner (see ./components/busy), and a second click is ignored
-          instead of sending a stale count. */}
+      {/* Busy until the new count is on this tab's stream: past 200 ms the
+          icon turns into a spinner (see ./components/busy), and a second
+          click meanwhile is ignored. */}
       <button
         type="button"
-        data-indicator="_incrementing"
-        data-on:click="!$_incrementing && @post('/increment')"
-        data-attr:aria-busy="$_incrementing && 'true'"
+        data-indicator={incrementing}
+        data-on:click={`!$${incrementing} && ${post("/actions/increment")}`}
+        data-attr:aria-busy={`$${incrementing} && 'true'`}
         class="busy:cursor-progress bg-primary text-primary-foreground hover:bg-primary/90 flex w-fit items-center gap-2 rounded-full px-6 py-3 font-semibold transition"
       >
         <BusyIcon icon="plus" />

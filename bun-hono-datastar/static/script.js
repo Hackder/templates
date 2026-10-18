@@ -148,3 +148,18 @@ window.addEventListener("pageswap", (event) => {
     event.viewTransition.skipTransition();
   }
 });
+
+// A stale tab: the server no longer knows this page's view session (it
+// restarted since the page loaded), so it answers an action with 410 and
+// changes nothing. Reload, which starts a known session. The /updates
+// stream does the same for a stale tab by adding an element that reloads
+// (ReloadTab in src/web/connection.tsx).
+document.addEventListener("datastar-fetch", (event) => {
+  if (!(event instanceof CustomEvent)) {
+    return;
+  }
+  const detail = event.detail;
+  if (detail?.type === "error" && detail.argsRaw?.status === "410") {
+    window.location.reload();
+  }
+});
