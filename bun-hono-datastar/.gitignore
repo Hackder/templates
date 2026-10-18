@@ -12,5 +12,8 @@ CPU.*
 logs/
 CLAUDE.local.md
 
+# Agent worktrees carry their own configs and would break the checks
+.claude/
+
 # Local spikes, screenshots and experiments
 /scratch/

@@ -132,8 +132,7 @@ export class DatastarEventSender {
 
   async #send({ event, dataLines }: SseEvent): Promise<void> {
     const text = `event: ${event}\n${dataLines.map((line) => `data: ${line}`).join("\n")}\n\n`;
-    // One write per event: WebKit holds back the tail of an event that
-    // arrives in several back-to-back pieces.
+    // One write per event: the event goes out whole, as one chunk.
     await this.#api.write(await this.#encoder.encode(text));
   }
 }

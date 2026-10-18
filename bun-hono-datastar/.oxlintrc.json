@@ -25,7 +25,8 @@
     "test-results",
     "lint-rules/fixtures",
     "lint-rules/anti-slop",
-    "scratch"
+    "scratch",
+    ".claude"
   ],
   "rules": {
     // In the enabled categories but not part of the project rule set

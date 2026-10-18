@@ -109,8 +109,8 @@ export function gzipCompress(): MiddlewareHandler {
  * Compresses an event stream one event at a time with a single compressor
  * for the whole connection, so a re-render reuses the previous render in the
  * window and costs a few hundred bytes. Each `encode` flushes and returns
- * every byte that event produced as one array, for one write: WebKit holds
- * back the tail of an event that arrives in several back-to-back pieces.
+ * every byte that event produced as one array, so the caller writes the
+ * event whole, as one chunk, rather than one per compressor output piece.
  */
 export interface EventEncoder {
   encode(event: string): Promise<Uint8Array>;

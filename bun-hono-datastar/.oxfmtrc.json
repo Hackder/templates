@@ -9,6 +9,7 @@
     "static/styles.css",
     "static/datastar-*",
     "static/icons-*/",
-    "scratch"
+    "scratch",
+    ".claude"
   ]
 }
