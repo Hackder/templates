@@ -376,7 +376,10 @@ export function mountAuth(app: Hono<AppEnv>, passwordHash: string): void {
 
   // Signing out and revoking answer 204 like every action, once the tab's
   // stream has emitted the change (./emission); the device's open streams
-  // see it gone and send their pages to the login form.
+  // see it gone and send their pages to the login form. Each is safe to
+  // repeat (Datastar retries a POST after a network error): a revoked id is
+  // ignored, and a repeated sign-out finds its device gone and gets the
+  // gate's 401.
   app.post("/actions/sign-out", async (context) => {
     const sessionId = await sessionOf(context.req);
     const version = revokeDevice(currentDevice(context).id);

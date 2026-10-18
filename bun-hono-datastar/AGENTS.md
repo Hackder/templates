@@ -47,7 +47,10 @@ page on each tab's `/updates` stream, which Datastar morphs in. A writer
 and `mutateView` return the change's version, and an action that changed
 something answers with `answerWhenEmitted` (`src/web/emission.ts`), once
 its tab's stream has written that version, so its `data-indicator` lasts
-until the change is shown.
+until the change is shown. Datastar retries a POST after a network error,
+so an action may run twice: commands state their intent where natural (an
+explicit target value or id, never a toggle), and request ids will make
+every busy action safe to repeat (that mechanism lands with the busy port).
 
 The password gate is opt-in: with `AUTH_PASSWORD_HASH` set, `authGate`
 (`src/web/auth.tsx`) runs before every route and only `PUBLIC_ROUTES` skip
