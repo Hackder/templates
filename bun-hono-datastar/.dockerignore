@@ -2,12 +2,15 @@
 .jj
 node_modules
 .env
+.env*
 .DS_Store
 .github
 *.db
+**/*.db*
 scratch
 logs
 e2e
 test-results
 data
 playwright-report
+.claude

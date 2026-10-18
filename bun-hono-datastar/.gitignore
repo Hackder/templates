@@ -10,5 +10,7 @@ static/styles.css
 **/.DS_Store
 CPU.*
 logs/
-scratch/
 CLAUDE.local.md
+
+# Local spikes, screenshots and experiments
+/scratch/
