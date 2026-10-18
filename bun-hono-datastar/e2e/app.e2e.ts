@@ -18,7 +18,7 @@ test("queries the database with a Temporal-derived bound", async ({ page }) => {
 
 test("serves vendored browser dependencies", async ({ page }) => {
   const datastar = page.waitForResponse((response) =>
-    response.url().endsWith("/static/datastar-1.0.2.js"),
+    response.url().endsWith("/static/datastar-1.0.4.js"),
   );
   const phosphor = page.waitForResponse((response) =>
     response.url().includes("/static/icons-2.1.2/Phosphor-Bold.woff2"),

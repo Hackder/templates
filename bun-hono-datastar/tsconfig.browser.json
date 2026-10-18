@@ -16,5 +16,5 @@
     "tools/logview/static/**/*.js",
     "tools/logview/static/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "static/datastar-1.0.2.js"]
+  "exclude": ["node_modules", "static/datastar-1.0.4.js"]
 }

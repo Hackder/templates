@@ -30,7 +30,7 @@ export function Shell({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>logview</title>
         <link rel="stylesheet" href="/assets/logview.css" />
-        <script type="module" src="/static/datastar-1.0.2.js"></script>
+        <script type="module" src="/static/datastar-1.0.4.js"></script>
         <script type="module" src="/assets/logview.js"></script>
       </head>
       <body>{children}</body>

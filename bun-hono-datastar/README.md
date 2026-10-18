@@ -95,7 +95,7 @@ Axiom files the OpenTelemetry semantic-convention fields (`url.path`, `http.*`,
 - `static/script.js` registers the custom Datastar browser plugins.
 - `src/web/components/icon.tsx` is the typed boundary for Phosphor icons.
 - `src/input.css` is compiled to the generated `static/styles.css`.
-- `static/datastar-1.0.2.js` is a pinned, self-hosted Datastar bundle.
+- `static/datastar-1.0.4.js` is a pinned, self-hosted Datastar bundle.
 - `static/icons-2.1.2` contains the pinned, self-hosted Phosphor font.
 - `tools/logview/` is the local log and trace viewer.
 - `lint-rules/` holds the custom Oxlint rules and their fixtures; `lint-rules/rules.test.ts` asserts the lines each fixture reports.

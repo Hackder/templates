@@ -1,4 +1,4 @@
-import { attribute, action, root } from "./datastar-1.0.2.js";
+import { attribute, action, root } from "./datastar-1.0.4.js";
 
 attribute({
   name: "hotreload",
