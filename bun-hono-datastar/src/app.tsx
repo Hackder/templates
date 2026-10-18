@@ -21,6 +21,40 @@ import { Icon } from "./web/components/icon";
 
 export const app = new Hono();
 
+/**
+ * Datastar evaluates its data-* expressions with `Function`, hence
+ * 'unsafe-eval'. Datastar 1.0.3+ has a nonce-based CSP mode, deliberately not
+ * used: it does not protect against injected data-* attributes, which run
+ * anyway. Escaping and sanitizing output is the real XSS protection. The dev
+ * overlay keeps its box in style attributes. Every script, stylesheet and
+ * font is our own.
+ */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join("; ");
+
+// First, so every response gets these headers, errors and 404s included.
+app.use("*", async (context, next) => {
+  await next();
+  context.header("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  context.header("X-Content-Type-Options", "nosniff");
+  // Not "no-referrer": with it browsers send `Origin: null` on a form post,
+  // which breaks any same-origin check on writes.
+  context.header("Referrer-Policy", "same-origin");
+  if (env.NODE_ENV === "production") {
+    context.header("Strict-Transport-Security", "max-age=31536000");
+  }
+});
+
 app.use("/static/*", etag());
 app.use("*", gzipCompress());
 /**

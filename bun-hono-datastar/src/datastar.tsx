@@ -100,16 +100,6 @@ export class DatastarEventSender {
       data: `signals ${JSON.stringify(signals)}`,
     });
   }
-
-  public async executeScript(script: string): Promise<void> {
-    await this.appendElements(
-      `<script data-effect="el.remove()">${script}</script>`,
-    );
-  }
-
-  public async redirect(url: string): Promise<void> {
-    await this.executeScript(`window.location.href = ${JSON.stringify(url)};`);
-  }
 }
 
 async function render(value: string | Promise<string>): Promise<string> {
@@ -127,49 +117,4 @@ export function datastarSse(
   return streamSSE(context, async (api) => {
     await handler(new DatastarEventSender(api));
   });
-}
-
-export function PushUrl({
-  url,
-  mode = "push",
-  part = "query",
-}: {
-  url: string | URL;
-  mode?: "push" | "replace";
-  part?: "full" | "query";
-}) {
-  const method = mode === "push" ? "pushState" : "replaceState";
-  // The origin is replaced with the browser's own: behind a TLS-terminating
-  // proxy (e.g. Cloudflare) the server sees plain HTTP, and pushState refuses
-  // a URL whose origin differs from the page's.
-  const content = `
-    (() => {
-      const target = new URL(${JSON.stringify(url.toString())}, "http://localhost");
-      target.protocol = window.location.protocol;
-      target.host = window.location.host;
-      target.hash = window.location.hash;
-      ${part === "query" ? "target.pathname = window.location.pathname;" : ""}
-      const value = target.toString();
-      if (window.location.href !== value) {
-        history.${method}({ url: value }, "", value);
-      } else if (history.state?.url !== value) {
-        // The URL is already the target one — typically the very first render
-        // of a freshly loaded page. Skipping the history call here would leave
-        // that entry without a state, and the popstate handlers restore the
-        // page by re-fetching \`history.state.url\`, so going back to a
-        // stateless entry would change the URL while leaving the previously
-        // patched DOM on screen. Stamp the url into the existing entry.
-        // Always a replace, never a push: nothing new happened, we are only
-        // labelling the entry we are on. The state check keeps it idempotent,
-        // since this script re-renders with every SSE patch.
-        history.replaceState({ url: value }, "", value);
-      }
-    })();
-  `;
-  return (
-    <script
-      data-effect="el.remove()"
-      dangerouslySetInnerHTML={{ __html: content }}
-    ></script>
-  );
 }
