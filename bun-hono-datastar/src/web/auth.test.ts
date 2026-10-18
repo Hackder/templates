@@ -198,6 +198,11 @@ describe("signed in", () => {
     const page = await getPage("/", cookie);
     expect(page.status).toBe(200);
     expect(await page.text()).toContain("Count:");
+    expect(page.headers.get("cache-control")).toBe("private, no-store");
+    // Static files keep their own caching (src/assets.ts).
+    const script = await getPage("/static/script.js", cookie);
+    expect(script.status).toBe(200);
+    expect(script.headers.get("cache-control")).toBe("no-cache");
   });
 
   test("signing in again replaces the browser's device", async () => {

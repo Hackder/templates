@@ -200,6 +200,7 @@ export function authGate(on: boolean): MiddlewareHandler<AppEnv> {
     const now = Temporal.Now.instant();
     const token = readDeviceCookie(context);
     const device = token === undefined ? null : deviceForToken(token, now);
+    const isPrivate = !isPublic(context.req.method, context.req.path);
     context.set("device", device);
     if (token !== undefined && device !== null) {
       // Renewed before the handler runs: a streamed response has sent its
@@ -207,10 +208,17 @@ export function authGate(on: boolean): MiddlewareHandler<AppEnv> {
       if (touchDevice(device, seenFrom(context), now)) {
         writeDeviceCookie(context, token);
       }
-    } else if (!isPublic(context.req.method, context.req.path)) {
+    } else if (isPrivate) {
       return turnAway(context);
     }
     await next();
+    // What the gate guards is for this device alone: no shared cache may
+    // keep it, nor the browser, which would show it again after signing
+    // out. Static files keep their own caching (src/assets.ts); they are
+    // the same for everyone and hold no data.
+    if (isPrivate && !context.req.path.startsWith("/static/")) {
+      context.header("Cache-Control", "private, no-store");
+    }
     return undefined;
   };
 }
