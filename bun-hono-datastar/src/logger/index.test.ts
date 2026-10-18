@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { DrizzleQueryError } from "drizzle-orm";
 import {
   consoleTransport,
   logger,
@@ -419,6 +420,21 @@ describe("transport failures", () => {
 });
 
 describe("error serialization", () => {
+  test("a failed query never logs its bound values", () => {
+    const secret = "api-token-secret";
+    const error = new DrizzleQueryError(
+      "insert into credentials (key, value) values (?, ?)",
+      ["axiom", secret],
+      new Error("SQLITE_BUSY"),
+    );
+
+    const json = JSON.stringify(toJsonValue(error));
+
+    expect(json).not.toContain(secret);
+    expect(json).toContain("insert into credentials");
+    expect(json).toContain("SQLITE_BUSY");
+  });
+
   test("keeps the cause chain and aggregate members", () => {
     const aggregate = new AggregateError(
       [new Error("first"), new Error("second")],

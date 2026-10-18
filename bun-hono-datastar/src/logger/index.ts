@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { DrizzleQueryError } from "drizzle-orm";
 import { env } from "../env";
 import { jsonParse } from "../std";
 import { type ConsoleFormatterOptions, createConsoleFormatter } from "./format";
@@ -153,14 +154,32 @@ export function toJsonValue(value: unknown, depth = 0): JsonValue | undefined {
   return Bun.inspect(value);
 }
 
+/**
+ * Drizzle puts the query's bound values into the message ("params: …"), and
+ * the stack repeats the message. Those values can be credentials (a token or
+ * a password hash being saved), so a failed query is logged with its SQL only.
+ */
+function redactedMessageAndStack(error: Error) {
+  if (!(error instanceof DrizzleQueryError)) {
+    return { message: error.message, stack: error.stack };
+  }
+  const message = `Failed query: ${error.query}`;
+  const stack = error.stack?.replace(error.message, message);
+  return {
+    message,
+    stack: stack?.includes("params:") === true ? undefined : stack,
+  };
+}
+
 function errorToJson(error: Error, depth: number): JsonValue {
+  const { message, stack } = redactedMessageAndStack(error);
   const entries: [string, JsonValue][] = [
     ["$error", true],
     ["name", error.name],
-    ["message", error.message],
+    ["message", message],
   ];
-  if (error.stack !== undefined) {
-    entries.push(["stack", error.stack]);
+  if (stack !== undefined) {
+    entries.push(["stack", stack]);
   }
   if (error.cause !== undefined) {
     entries.push(["cause", toJsonValue(error.cause, depth + 1) ?? null]);
