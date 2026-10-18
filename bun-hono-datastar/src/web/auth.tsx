@@ -355,8 +355,13 @@ export function mountAuth(app: Hono<AppEnv>, passwordHash: string): void {
     recordSuccess(perIp, ip);
     recordSuccess(everyone, EVERYONE);
 
-    const { device, token } = signIn(seenFrom(context), now);
-    logger().info("Device signed in", { deviceId: device.id, ip });
+    const replacing = context.get("device");
+    const { device, token } = signIn(seenFrom(context), now, replacing);
+    logger().info("Device signed in", {
+      deviceId: device.id,
+      replacedDeviceId: replacing?.id,
+      ip,
+    });
     writeDeviceCookie(context, token);
     return context.redirect(next, 303);
   });

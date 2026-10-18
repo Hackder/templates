@@ -166,8 +166,16 @@ export interface SignedIn {
   token: string;
 }
 
-/** Signs a browser in, after a correct password. */
-export function signIn(seen: Seen, now: Temporal.Instant): SignedIn {
+/**
+ * Signs a browser in, after a correct password. A browser that was signed
+ * in already (a stale login form in another tab) gets a new device in place
+ * of its old one, which would otherwise linger unused in the list.
+ */
+export function signIn(
+  seen: Seen,
+  now: Temporal.Instant,
+  replacing: Device | null,
+): SignedIn {
   const token = randomBytes(32).toString("base64url");
   const device: Device = {
     id: crypto.randomUUID(),
@@ -177,9 +185,16 @@ export function signIn(seen: Seen, now: Temporal.Instant): SignedIn {
     lastIp: seen.ip,
     userAgent: seen.userAgent,
   };
+  const replaced = replacing?.tokenHash;
+  if (replaced !== undefined) {
+    devices.delete(replaced);
+  }
   devices.set(device.tokenHash, device);
   notify();
   persist(async (db) => {
+    if (replaced !== undefined) {
+      await db.delete(devicesTable).where(eq(devicesTable.tokenHash, replaced));
+    }
     await db.insert(devicesTable).values({
       id: device.id,
       tokenHash: device.tokenHash,

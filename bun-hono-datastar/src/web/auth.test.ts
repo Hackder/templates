@@ -5,7 +5,7 @@ import {
   generateSQLiteDrizzleJson,
   generateSQLiteMigration,
 } from "drizzle-kit/api";
-import { deviceLabel, loadDevices } from "../auth/devices";
+import { deviceLabel, listDevices, loadDevices } from "../auth/devices";
 import * as schema from "../schema";
 import { PUBLIC_ROUTES, isPublic, safeNext } from "./auth";
 import { createApp } from "./web";
@@ -198,6 +198,18 @@ describe("signed in", () => {
     const page = await getPage("/", cookie);
     expect(page.status).toBe(200);
     expect(await page.text()).toContain("Count:");
+  });
+
+  test("signing in again replaces the browser's device", async () => {
+    const first = await logIn(null);
+    const before = listDevices(Temporal.Now.instant()).length;
+    const again = await logIn(first.cookie);
+    expect(again.response.status).toBe(303);
+    expect(again.cookie).not.toBe(first.cookie);
+    expect(listDevices(Temporal.Now.instant())).toHaveLength(before);
+    // The old cookie opens nothing any more; the new one does.
+    expect((await getPage("/", first.cookie)).status).toBe(302);
+    expect((await getPage("/", again.cookie)).status).toBe(200);
   });
 });
 
