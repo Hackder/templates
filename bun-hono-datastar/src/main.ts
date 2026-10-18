@@ -40,14 +40,6 @@ if (PASSWORD_GATE) {
   );
 }
 
-// A deploy stops the container with SIGTERM: queued device writes finish,
-// then the database connection (and an embedded replica's sync) is closed
-// before the logger's last flush and exit.
-onShutdown(async () => {
-  await flushDeviceWrites();
-  closeDb();
-});
-
 const server = Bun.serve({
   // The client's address reaches the routes as a binding (see AppEnv in
   // src/web/auth.tsx).
@@ -69,6 +61,17 @@ const server = Bun.serve({
   maxRequestBodySize: 1024 * 1024,
   // /updates streams stay open indefinitely.
   idleTimeout: 0,
+});
+
+// A deploy stops the container with SIGTERM. First the server stops, so no
+// request changes anything any more; it closes open connections too, since
+// /updates streams never end on their own. Then the queued device writes
+// finish, and only then is the database connection (and an embedded
+// replica's sync) closed, before the logger's last flush and exit.
+onShutdown(async () => {
+  await server.stop(true);
+  await flushDeviceWrites();
+  closeDb();
 });
 
 // A wildcard address listens on every interface: the network ones and,
