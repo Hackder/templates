@@ -1,24 +1,20 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { resolve, sep } from "node:path";
 import { env } from "../src/env";
-import { E2E_DATABASE_URL } from "./constants";
-import { dirname } from "node:path";
+import { E2E_DATA_DIR } from "./constants";
 
-if (env.TURSO_DATABASE_URL !== E2E_DATABASE_URL) {
-  throw new Error(
-    `Refusing to prepare ${env.TURSO_DATABASE_URL}; expected ${E2E_DATABASE_URL}`,
-  );
+// Creates the schema of a worker's fresh database (e2e/fixtures.ts), and
+// refuses any database outside the E2E data directory.
+
+const dataDir = resolve(E2E_DATA_DIR) + sep;
+const url = env.TURSO_DATABASE_URL;
+if (!url.startsWith("file:") || !resolve(url.slice(5)).startsWith(dataDir)) {
+  throw new Error(`Refusing to prepare ${url}; expected one in ${dataDir}`);
 }
 if (env.TURSO_REMOTE_SYNC_URL !== undefined) {
   throw new Error("E2E database must not synchronize with a remote database");
 }
 if (env.MOCK_TIME === undefined) {
   throw new Error("E2E tests require MOCK_TIME");
-}
-
-const dbFile = env.TURSO_DATABASE_URL.replace("file:", "");
-mkdirSync(dirname(dbFile), { recursive: true });
-for (const suffix of ["", "-wal", "-shm"]) {
-  rmSync(`${dbFile}${suffix}`, { force: true });
 }
 
 const push = Bun.spawnSync({

@@ -20,7 +20,7 @@ src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
 src/web/components/   shared JSX components (icons, busy spinners)
 static/               browser files: Datastar, script.js, icons, built styles
 tools/logview/        local log and trace viewer for `logs/log.ndjson`
-e2e/                  Playwright tests against a prepared local database
+e2e/                  Playwright tests; one server and database per worker
 ```
 
 A page is server-rendered JSX. An interaction is a Datastar action: a

@@ -37,6 +37,10 @@ bunx playwright install chromium webkit
 bun run test:e2e
 ```
 
+Each Playwright worker starts its own server on a free port, with a fresh
+database and log under `e2e/.data/` (`e2e/fixtures.ts`). Import `test` and
+`expect` from `e2e/fixtures.ts` in specs.
+
 ## Logging and traces
 
 Everything logs through `src/logger/`: `withSpan` for an owning span with one

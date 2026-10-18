@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("updates server-rendered JSX through Datastar", async ({ page }) => {
   await page.goto("/");

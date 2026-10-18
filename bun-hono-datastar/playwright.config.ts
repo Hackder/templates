@@ -1,12 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
-import { env, type AppEnvInput } from "./src/env";
-import { E2E_DATABASE_URL, E2E_MOCK_NOW, E2E_PORT } from "./e2e/constants";
+import { env } from "./src/env";
 
+// Every worker starts its own server (e2e/fixtures.ts), so there is no
+// webServer here and the projects run side by side. Two runs at once each
+// need their own `--output` (Playwright empties it when a run starts).
 export default defineConfig({
   testDir: "./e2e",
   // *.e2e.ts so `bun test` (which picks up *.test.* and *.spec.*) never
   // tries to run Playwright specs.
   testMatch: "**/*.e2e.ts",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   // Deliberately no retries, in CI included: a test that needs a retry is a
   // flaky test we want to see fail and fix, not tolerate.
@@ -16,7 +19,6 @@ export default defineConfig({
   // The github reporter annotates failing lines directly in the PR diff
   reporter: env.CI ? [["list"], ["github"]] : [["list"]],
   use: {
-    baseURL: `http://localhost:${E2E_PORT}`,
     trace: "retain-on-failure",
   },
   projects: [
@@ -29,21 +31,4 @@ export default defineConfig({
       ? []
       : [{ name: "webkit", use: { ...devices["Desktop Safari"] } }]),
   ],
-  webServer: {
-    command:
-      "bun run tailwind:build && bun run e2e/prepare.ts && bun run src/main.ts",
-    port: E2E_PORT,
-    reuseExistingServer: false,
-    // Explicit env beats anything Bun would auto-load from .env, so the
-    // server can never touch a real database. prepare.ts double-checks this.
-    env: {
-      NODE_ENV: "test",
-      PORT: String(E2E_PORT),
-      TURSO_DATABASE_URL: E2E_DATABASE_URL,
-      TURSO_REMOTE_SYNC_URL: "disabled",
-      TURSO_SYNC_PULL_INTERVAL_MS: "disabled",
-      MOCK_TIME: E2E_MOCK_NOW,
-      LOG_LEVEL: "warn",
-    } satisfies AppEnvInput,
-  },
 });
