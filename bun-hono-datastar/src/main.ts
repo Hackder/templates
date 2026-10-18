@@ -1,5 +1,5 @@
 import os from "node:os";
-import { app } from "./app";
+import { app } from "./web/web";
 import { ensureDotEnv, env } from "./env";
 import { closeDb } from "./db";
 import { logger, onShutdown } from "./logger";

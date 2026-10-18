@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { app } from "./app";
+import { app } from "./web";
 
 describe("app", () => {
   test("renders the initial page", async () => {

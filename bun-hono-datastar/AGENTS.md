@@ -8,7 +8,6 @@ This file captures the conventions used in this codebase. Read it before making 
 
 ```
 src/main.ts           process start: Bun version check, `.env`, shutdown, Bun.serve
-src/app.tsx           the Hono app: security headers, middleware, pages, actions
 src/datastar.tsx      reading signals (validated with zod) and SSE patch responses
 src/env.ts            the one environment parser; nothing else reads process.env
 src/db.ts             libSQL client and Drizzle instance; schema in src/schema.ts
@@ -17,6 +16,9 @@ src/logger/           spans, events and errors; a worker formats and ships them
 src/compress.ts       gzip / brotli middleware; per-connection SSE compression
 src/assets.ts         content hashes for static URLs (`?v=`) and Cache-Control
 src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
+src/web/web.tsx       the Hono app: security headers, middleware, routes, actions
+src/web/layout.tsx    the document every page shares
+src/web/page.tsx      the example page (the counter)
 src/web/components/   shared JSX components (icons, busy spinners)
 static/               browser files: Datastar, script.js, icons, built styles
 tools/logview/        local log and trace viewer for `logs/log.ndjson`
@@ -26,7 +28,7 @@ e2e/                  Playwright tests; one server and database per worker
 A page is server-rendered JSX. An interaction is a Datastar action: a
 route reads the page's signals with `readSignalsRequired` and a zod schema,
 and answers with `datastarSse`, patching elements and signals. Every request
-runs inside one owning `request` span (`withSpan` in `src/app.tsx`), so
+runs inside one owning `request` span (`withSpan` in `src/web/web.tsx`), so
 whatever a handler logs or `set()`s lands on that request's line and trace.
 Dev-only routes are mounted only when `NODE_ENV` is `development`; unset
 means production, and `bun run dev` sets it.
