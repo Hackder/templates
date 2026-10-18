@@ -22,10 +22,10 @@ for (const suffix of ["", "-wal", "-shm"]) {
 }
 
 const push = Bun.spawnSync({
-  cmd: ["./node_modules/.bin/drizzle-kit", "push"],
+  cmd: ["bun", "run", "db:push"],
   stdout: "inherit",
   stderr: "inherit",
 });
 if (push.exitCode !== 0) {
-  throw new Error(`drizzle-kit push failed with exit code ${push.exitCode}`);
+  throw new Error(`bun run db:push failed with exit code ${push.exitCode}`);
 }
