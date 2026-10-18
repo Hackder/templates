@@ -1,5 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { envSchema, renderDefaultDotEnv } from "./env";
+import { envSchema, passwordHashProblem, renderDefaultDotEnv } from "./env";
+
+const HASH = "$argon2id$v=19$m=65536,t=2,p=1$c2FsdA$aGFzaA";
+
+describe("passwordHashProblem", () => {
+  test("accepts an argon2id hash, explains the broken forms", () => {
+    expect(passwordHashProblem(HASH)).toBeNull();
+    // The .env escapes pasted where nothing removes them.
+    expect(passwordHashProblem(HASH.replaceAll("$", "\\$"))).toContain(
+      "only for .env",
+    );
+    // What Bun's loader leaves of an unescaped hash: `$name` parts expanded.
+    expect(passwordHashProblem("=19=65536,t=2,p=1")).toContain(
+      "escaped as \\$",
+    );
+    expect(passwordHashProblem("$argon2id$v=19")).toContain("escaped as \\$");
+  });
+});
 
 describe("renderDefaultDotEnv", () => {
   const rendered = renderDefaultDotEnv();

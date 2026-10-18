@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "NODE_ENV=development bun run --watch src/main.ts",
     "logview": "bun run --watch tools/logview/main.tsx",
+    "auth:hash": "bun run tools/auth-hash.ts",
     "tailwind": "tailwindcss -i ./src/input.css -o ./static/styles.css --watch",
     "tailwind:build": "tailwindcss -i ./src/input.css -o ./static/styles.css --minify",
     "typecheck": "tsc && tsc -p tsconfig.browser.json",

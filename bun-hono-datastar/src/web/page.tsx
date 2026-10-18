@@ -8,7 +8,8 @@ import {
 } from "../utils";
 import type { State } from "../state";
 import { BusyIcon } from "./components/busy";
-import { ConnectionSlip, OPEN_UPDATES } from "./connection";
+import { Icon } from "./components/icon";
+import { LivePage } from "./layout";
 import { indicator, post } from "./post";
 
 // The example page: the shared counter (src/state.ts), and a database query
@@ -50,15 +51,20 @@ export async function CounterPage({ state }: { state: Readonly<State> }) {
   const incrementing = indicator("increment");
 
   return (
-    <main
-      id="app"
-      data-init={OPEN_UPDATES}
-      class="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-8 px-6"
-    >
+    <LivePage class="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-8 px-6">
       <div class="space-y-3">
-        <p class="tracking-eyebrow text-primary text-sm font-medium uppercase">
-          Bun + Hono + Datastar
-        </p>
+        <div class="flex items-center justify-between gap-4">
+          <p class="tracking-eyebrow text-primary text-sm font-medium uppercase">
+            Bun + Hono + Datastar
+          </p>
+          <a
+            href="/settings"
+            class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+          >
+            <Icon icon="gear" aria-hidden="true" />
+            Settings
+          </a>
+        </div>
         <h1
           class={cn(
             "text-5xl font-semibold tracking-tight",
@@ -91,7 +97,6 @@ export async function CounterPage({ state }: { state: Readonly<State> }) {
         <BusyIcon icon="plus" />
         Increment
       </button>
-      <ConnectionSlip />
-    </main>
+    </LivePage>
   );
 }

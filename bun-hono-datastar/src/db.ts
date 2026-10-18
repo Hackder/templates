@@ -18,6 +18,7 @@ const rawClient = createClient({
 const client = instrumentClient(rawClient);
 
 export const db = drizzle(client, { schema });
+export type Db = typeof db;
 
 /**
  * Releases the libSQL connection and its background sync timer so a one-off

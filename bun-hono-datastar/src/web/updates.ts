@@ -1,3 +1,4 @@
+import { subscribeDevices } from "../auth/devices";
 import type { DatastarEventSender } from "../datastar";
 import { subscribe } from "../state";
 import { currentVersion } from "../version";
@@ -10,9 +11,11 @@ export type UpdatesSender = Pick<
   "aborted" | "onAbort" | "patchElements" | "appendElements"
 >;
 
-/** What the stream shows: the tab's page. */
+/** What the stream shows: the tab's page, while its device is signed in. */
 export interface UpdatesPage {
   render: (view: ViewState) => string | Promise<string>;
+  /** Always true while the password gate is off. */
+  signedIn: () => boolean;
   /**
    * For a tab whose view session the server does not know: an element
    * that reloads the page once it is added to it.
@@ -21,19 +24,20 @@ export interface UpdatesPage {
 }
 
 /**
- * The one long-lived stream each tab holds. Any change to the app state or
- * to this session's view marks it dirty; the loop then renders the whole
- * page once, however many changes arrived meanwhile, and Datastar morphs it
- * in (which keeps scroll position and focus). Each render is recorded as
- * emitted at the version it started from, once its events are written
- * (./emission), which is what answers the tab's actions.
+ * The one long-lived stream each tab holds. Any change to the app state, to
+ * the device list or to this session's view marks it dirty; the loop then
+ * renders the whole page once, however many changes arrived meanwhile, and
+ * Datastar morphs it in (which keeps scroll position and focus). Each
+ * render is recorded as emitted at the version it started from, once its
+ * events are written (./emission), which is what answers the tab's
+ * actions.
  *
  * A session the server does not know (it restarted since the page loaded,
  * or forgot the idle tab) has nothing to render from: the stream adds the
  * reload element to the page, which keeps showing what it had until the
- * reload replaces it, and ends. The page load starts a known session. While
- * the stream is open its session is held (`holdView`), so the server cannot
- * forget it meanwhile.
+ * reload replaces it, and ends, as it does for a signed-out page. The page
+ * load starts a known session. While the stream is open its session is held
+ * (`holdView`), so the server cannot forget it meanwhile.
  */
 export async function streamUpdates(
   sessionId: string,
@@ -56,6 +60,9 @@ export async function streamUpdates(
   const emission = openEmission(sessionId);
   const unsubscribeState = subscribe(markDirty);
   const unsubscribeView = subscribeView(sessionId, markDirty);
+  // Signing out or revoking this device wakes the loop, which renders
+  // the signed-out page (it sends the tab to /login) and ends the stream.
+  const unsubscribeDevices = subscribeDevices(markDirty);
   sender.onAbort(() => {
     wake?.();
   });
@@ -69,6 +76,9 @@ export async function streamUpdates(
         const version = currentVersion();
         await sender.patchElements(page.render(view));
         emission.emitted(version);
+        if (!page.signedIn()) {
+          break;
+        }
         continue;
       }
       await new Promise<void>((resolve) => {
@@ -85,6 +95,7 @@ export async function streamUpdates(
     emission.close();
     unsubscribeState();
     unsubscribeView();
+    unsubscribeDevices();
     held.release();
   }
 }

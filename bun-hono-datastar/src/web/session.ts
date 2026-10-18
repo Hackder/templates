@@ -12,7 +12,7 @@ import { type Version, advanceVersion } from "../version";
 // grants nothing.
 
 /** Which page the tab shows; set by the route that loaded it. */
-export type Page = "counter";
+export type Page = "counter" | "settings";
 
 /** What one tab shows. Add a page's UI state (an open form, a filter) here. */
 export interface ViewState {

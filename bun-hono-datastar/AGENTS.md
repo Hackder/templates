@@ -18,6 +18,7 @@ src/assets.ts         content hashes for static URLs (`?v=`) and Cache-Control
 src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
 src/state.ts          the app's shared state and its only writer
 src/version.ts        one version counter for every renderable change
+src/auth/             device sessions, login rate limiter, the password (opt-in)
 src/web/web.tsx       the Hono app: security headers, middleware, routes, actions
 src/web/layout.tsx    the document every page shares
 src/web/page.tsx      the example page (the counter)
@@ -26,6 +27,8 @@ src/web/session.ts    per-tab view state (`sessionid` signal), `mutateView`
 src/web/emission.ts   `answerWhenEmitted`: an action answers once it is shown
 src/web/post.ts       `post` and `indicator` helpers for Datastar actions
 src/web/connection.tsx the stream: retried forever, its status slip, tab reload
+src/web/auth.tsx      the login gate, /login, sign-out and device revocation
+src/web/settings.tsx  the settings page: signed-in devices
 src/web/components/   shared JSX components (icons, busy spinners)
 static/               browser files: Datastar, script.js, icons, built styles
 tools/logview/        local log and trace viewer for `logs/log.ndjson`
@@ -45,6 +48,15 @@ and `mutateView` return the change's version, and an action that changed
 something answers with `answerWhenEmitted` (`src/web/emission.ts`), once
 its tab's stream has written that version, so its `data-indicator` lasts
 until the change is shown.
+
+The password gate is opt-in: with `AUTH_PASSWORD_HASH` set, `authGate`
+(`src/web/auth.tsx`) runs before every route and only `PUBLIC_ROUTES` skip
+it, so a new route is private without doing anything; never add to that
+list something that shows data. Without it the app is open (production
+logs a warning). Two kinds of "session" exist and must not be mixed up:
+the **view session** (`sessionid` signal, one per tab, UI state only,
+grants nothing) and the **device session** (`device` cookie, one per
+signed-in browser, `src/auth/devices.ts`).
 
 Every request runs inside one owning `request` span (`withSpan` in
 `src/web/web.tsx`), so whatever a handler logs or `set()`s lands on that

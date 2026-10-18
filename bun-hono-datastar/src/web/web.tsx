@@ -1,8 +1,11 @@
+import assert from "node:assert/strict";
 import { type Context, Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { etag } from "hono/etag";
 import { HTTPException } from "hono/http-exception";
 import { staticCacheControl } from "../assets";
+import { isSignedIn, listDevices } from "../auth/devices";
+import { PASSWORD_GATE } from "../auth/password";
 import { gzipCompress } from "../compress";
 import { datastarSse } from "../datastar";
 import { db } from "../db";
@@ -11,11 +14,14 @@ import { env } from "../env";
 import { logger, withSpan } from "../logger";
 import { items } from "../schema";
 import { increment, readState } from "../state";
+import { exhaustiveCheck } from "../utils";
+import { type AppEnv, authGate, mountAuth } from "./auth";
 import { ReloadTab } from "./connection";
 import { answerWhenEmitted } from "./emission";
 import { Layout } from "./layout";
 import { CounterPage } from "./page";
-import { type Page, openView, sessionOf } from "./session";
+import { SettingsView, SignedOutView } from "./settings";
+import { type Page, type ViewState, openView, sessionOf } from "./session";
 import { streamUpdates } from "./updates";
 
 // The web layer reads state and renders it; it changes nothing itself
@@ -26,7 +32,7 @@ import { streamUpdates } from "./updates";
 // (`answerWhenEmitted`, ./emission), so its loading indicator lasts until
 // then.
 
-export const app = new Hono();
+export const app = new Hono<AppEnv>();
 
 /**
  * Datastar evaluates its data-* expressions with `Function`, hence
@@ -49,7 +55,8 @@ const CONTENT_SECURITY_POLICY = [
   "form-action 'self'",
 ].join("; ");
 
-// First, so every response gets these headers, errors and 404s included.
+// First, so every response gets these headers, the gate's 401s and
+// redirects, errors and 404s included.
 app.use("*", async (context, next) => {
   await next();
   context.header("Content-Security-Policy", CONTENT_SECURITY_POLICY);
@@ -61,6 +68,12 @@ app.use("*", async (context, next) => {
     context.header("Strict-Transport-Security", "max-age=31536000");
   }
 });
+
+// Deny by default while the password gate is on: before every other route
+// and middleware, so nothing is served to a request without a signed-in
+// device unless ./auth lists it as public (the login page and what it
+// loads). Off, it lets everything through.
+app.use("*", authGate(PASSWORD_GATE));
 
 app.use("/static/*", etag());
 app.use("*", gzipCompress());
@@ -129,11 +142,48 @@ app.use(async (context, next) => {
 // ---------------------------------------------------------------------------
 
 /**
- * The tab's page, from the app state. With a second page, switch on
- * `view.page` here (src/web/session.ts).
+ * The tab's page, or the signed-out page once its device is gone.
+ * `deviceId` is null while the password gate is off.
  */
-function View() {
-  return <CounterPage state={readState()} />;
+function View({
+  view,
+  deviceId,
+}: {
+  view: ViewState;
+  deviceId: string | null;
+}) {
+  const now = Temporal.Now.instant();
+  if (deviceId !== null && !isSignedIn(deviceId, now)) {
+    return <SignedOutView />;
+  }
+  switch (view.page) {
+    case "counter":
+      return <CounterPage state={readState()} />;
+    case "settings":
+      return (
+        <SettingsView
+          gate={
+            deviceId === null
+              ? null
+              : { devices: listDevices(now), currentDeviceId: deviceId }
+          }
+        />
+      );
+    default:
+      return exhaustiveCheck(view.page);
+  }
+}
+
+/**
+ * The request's device on a private route; null while the gate is off.
+ */
+function deviceIdOf(context: Context<AppEnv>): string | null {
+  const device = context.get("device");
+  assert(
+    !PASSWORD_GATE || device !== null,
+    "with the gate on, authGate turns away requests without a device before any private route",
+  );
+  return device?.id ?? null;
 }
 
 /**
@@ -141,23 +191,33 @@ function View() {
  * session starts, so a tab the server forgot reloads to get here (see
  * `streamUpdates`).
  */
-async function pageResponse(context: Context, page: Page): Promise<Response> {
+async function pageResponse(
+  context: Context<AppEnv>,
+  page: Page,
+): Promise<Response> {
   const session = openView({ page });
   return await context.html(
     <Layout sessionId={session.id}>
-      <View />
+      <View view={session.view} deviceId={deviceIdOf(context)} />
     </Layout>,
   );
 }
 
 app.get("/", async (context) => await pageResponse(context, "counter"));
+app.get(
+  "/settings",
+  async (context) => await pageResponse(context, "settings"),
+);
 
 /** The tab's stream of page renders; see `streamUpdates`. */
 app.get("/updates", async (context) => {
   const sessionId = await sessionOf(context.req);
+  const deviceId = deviceIdOf(context);
   return datastarSse(context, async (sender) => {
     await streamUpdates(sessionId, sender, {
-      render: () => <View />,
+      render: (view) => <View view={view} deviceId={deviceId} />,
+      signedIn: () =>
+        deviceId === null || isSignedIn(deviceId, Temporal.Now.instant()),
       reload: () => <ReloadTab />,
     });
   });
@@ -173,6 +233,10 @@ app.post("/actions/increment", async (context) => {
   const version = increment();
   return await answerWhenEmitted(context, sessionId, version);
 });
+
+if (PASSWORD_GATE) {
+  mountAuth(app);
+}
 
 if (env.NODE_ENV === "development") {
   app.route("/", devModeApp);

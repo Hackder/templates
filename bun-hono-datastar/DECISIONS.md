@@ -19,3 +19,8 @@ before changing what they cover.
   every tab sees every change, and a dropped connection heals itself on the
   next render. An action answers once its change is on the tab's stream, so
   a spinner ends when the change is visible, with no timeouts.
+- **The password gate is opt-in, and when on it denies by default**: the
+  template must run with no setup, yet an app holding anything private
+  needs the gate on every route. Without `AUTH_PASSWORD_HASH` the app is
+  open and production says so at startup; with it only `PUBLIC_ROUTES` skip
+  the login.

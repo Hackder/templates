@@ -76,6 +76,7 @@ function fakeStream() {
 function open(sessionId: string, stream: ReturnType<typeof fakeStream>) {
   return streamUpdates(sessionId, stream.sender, {
     render: () => `count=${readState().count}`,
+    signedIn: () => true,
     reload: () => "reload",
   });
 }

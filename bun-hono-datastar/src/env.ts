@@ -69,6 +69,28 @@ export const envSchema = z.object({
       'How often the local replica pulls from the remote, or "disabled"',
     ),
 
+  // Login
+  AUTH_PASSWORD_HASH: z
+    .string()
+    .superRefine((value, ctx) => {
+      const problem = passwordHashProblem(value);
+      if (problem !== null) {
+        ctx.addIssue({ code: "custom", message: problem });
+      }
+    })
+    .optional()
+    .describe(
+      "Login: argon2id hash of the one password; paste the line `bun run auth:hash` prints, every $ escaped as \\$. Unset leaves the app open to anyone who can reach it",
+    ),
+  TRUST_PROXY_HOPS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .describe(
+      "Reverse proxies in front of the app that append to X-Forwarded-For; 0 uses the connection's address as the client IP",
+    ),
+
   // Logging
   LOG_LEVEL: z
     .enum(["debug", "info", "warn", "error"])
@@ -180,5 +202,53 @@ export async function ensureDotEnv(): Promise<void> {
   console.log("Created .env with default values");
 }
 
-// oxlint-disable-next-line no-restricted-properties
-export const env = Object.freeze(envSchema.parse(process.env));
+const ARGON2ID_HASH =
+  /^\$argon2id\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+$/;
+
+/**
+ * Why `value` is not a usable AUTH_PASSWORD_HASH, or null. A wrong one
+ * would only show at the first login, so the likely ways of mangling it
+ * get their own explanation.
+ */
+export function passwordHashProblem(value: string): string | null {
+  if (value.includes("\\")) {
+    return "contains a backslash: the \\$ escapes are only for .env, where Bun removes them; elsewhere (the hosting environment) set the hash as is";
+  }
+  if (ARGON2ID_HASH.test(value)) {
+    return null;
+  }
+  return "is not a complete argon2id hash ($argon2id$v=..$m=..,t=..,p=..$salt$hash). In .env every $ must be escaped as \\$, because Bun expands $name even in single quotes; paste the line `bun run auth:hash` prints";
+}
+
+/**
+ * Ends the process on an environment it must not run with. An exit, not a
+ * throw: under `bun --watch` an uncaught error leaves the watcher waiting
+ * for a source change, and editing `.env` is not one.
+ */
+function exitOnEnvProblem(message: string): never {
+  console.error(`\n${message}\n`);
+  process.exit(1);
+}
+
+function loadEnv(): AppEnvOutput {
+  // oxlint-disable-next-line no-restricted-properties
+  const result = envSchema.safeParse(process.env);
+  if (result.success) {
+    return Object.freeze(result.data);
+  }
+  // Values are never repeated: they may be secrets.
+  const lines = result.error.issues.map((issue) => {
+    const [key] = issue.path;
+    return key === undefined
+      ? `- ${issue.message}`
+      : `- ${String(key)}: ${issue.message}`;
+  });
+  exitOnEnvProblem(
+    [
+      "Environment validation failed (schema: src/env.ts, values from the process environment and .env).",
+      ...lines,
+    ].join("\n"),
+  );
+}
+
+export const env = loadEnv();

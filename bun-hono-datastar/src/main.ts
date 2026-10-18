@@ -1,7 +1,9 @@
 import os from "node:os";
+import { flushDeviceWrites, loadDevices } from "./auth/devices";
+import { PASSWORD_GATE } from "./auth/password";
 import { app } from "./web/web";
 import { ensureDotEnv, env } from "./env";
-import { closeDb } from "./db";
+import { closeDb, db } from "./db";
 import { logger, onShutdown } from "./logger";
 
 // `.bun-version` is the pinned Bun release (see bun-version.test.ts). Bun does
@@ -29,14 +31,30 @@ if (env.MOCK_TIME) {
   });
 }
 
-// A deploy stops the container with SIGTERM: the database connection (and an
-// embedded replica's sync) is closed before the logger's last flush and exit.
-onShutdown(() => {
+if (PASSWORD_GATE) {
+  // Signed-in devices, before serving: the gate looks them up in memory.
+  await loadDevices(db);
+} else if (env.NODE_ENV === "production") {
+  logger().warn(
+    "AUTH_PASSWORD_HASH is not set: the app is public, anyone who can reach it can use it",
+  );
+}
+
+// A deploy stops the container with SIGTERM: queued device writes finish,
+// then the database connection (and an embedded replica's sync) is closed
+// before the logger's last flush and exit.
+onShutdown(async () => {
+  await flushDeviceWrites();
   closeDb();
 });
 
 const server = Bun.serve({
-  fetch: app.fetch,
+  // The client's address reaches the routes as a binding (see AppEnv in
+  // src/web/auth.tsx).
+  fetch: (request, bunServer) =>
+    app.fetch(request, {
+      connectionIp: bunServer.requestIP(request)?.address,
+    }),
   error: (error) => {
     // Hono handles request errors itself. Reaching Bun means rendering that
     // error response also failed, so bypass the app and report directly.
@@ -46,6 +64,10 @@ const server = Bun.serve({
   development: env.NODE_ENV === "development",
   hostname: env.HOST,
   port: env.PORT,
+  // Bun's default is 128MB. Actions post a few signals and /login has its
+  // own, tighter limit (src/web/auth.tsx).
+  maxRequestBodySize: 1024 * 1024,
+  // /updates streams stay open indefinitely.
   idleTimeout: 0,
 });
 

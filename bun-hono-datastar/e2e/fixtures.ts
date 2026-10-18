@@ -39,9 +39,13 @@ function run(appEnv: AppEnv, cmd: string[]): void {
 async function startApp(
   appEnv: AppEnv,
 ): Promise<{ app: ChildProcess; baseURL: string }> {
-  const app = spawn("env", withEnv(appEnv, ["bun", "run", "src/main.ts"]), {
-    stdio: ["ignore", "pipe", "inherit"],
-  });
+  // Without .env: a developer's own settings there (a password hash, say)
+  // must not change what the tests run against.
+  const app = spawn(
+    "env",
+    withEnv(appEnv, ["bun", "--no-env-file", "run", "src/main.ts"]),
+    { stdio: ["ignore", "pipe", "inherit"] },
+  );
   const { stdout } = app;
   const early = Promise.withResolvers<never>();
   function exitedEarly(code: number | null): void {
@@ -79,10 +83,20 @@ async function stopApp(app: ChildProcess): Promise<void> {
   await exited;
 }
 
-export const test = base.extend<object, { serverURL: string }>({
+interface WorkerFixtures {
+  /**
+   * The server's AUTH_PASSWORD_HASH; unset (the default) leaves the app
+   * open. A spec sets it with `test.use`, and Playwright gives it workers,
+   * and so servers, of its own.
+   */
+  passwordHash: string | undefined;
+  serverURL: string;
+}
+
+export const test = base.extend<object, WorkerFixtures>({
+  passwordHash: [undefined, { scope: "worker", option: true }],
   serverURL: [
-    // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this pattern; this fixture has none
-    async ({}, use) => {
+    async ({ passwordHash }, use) => {
       mkdirSync(E2E_DATA_DIR, { recursive: true });
       const dir = resolve(mkdtempSync(join(E2E_DATA_DIR, "worker-")));
       // Explicit env beats anything Bun would load from .env, so the server
@@ -97,8 +111,12 @@ export const test = base.extend<object, { serverURL: string }>({
         LOG_LEVEL: "warn",
         LOG_JSON_FILE: join(dir, "log.ndjson"),
       } satisfies AppEnvInput;
+      const serverEnv =
+        passwordHash === undefined
+          ? appEnv
+          : { ...appEnv, AUTH_PASSWORD_HASH: passwordHash };
       run(appEnv, ["bun", "run", "e2e/prepare.ts"]);
-      const { app, baseURL } = await startApp(appEnv);
+      const { app, baseURL } = await startApp(serverEnv);
       try {
         await use(baseURL);
       } finally {

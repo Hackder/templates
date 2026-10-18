@@ -1,5 +1,6 @@
 // One counter for every change a page renders from: the app state
-// (src/state.ts) and a tab's view state (src/web/session.ts). Each such
+// (src/state.ts), a tab's view state (src/web/session.ts) and the device
+// list (src/auth/devices.ts). Each such
 // change advances it right before its listeners hear about it, so a version
 // names "the state as of that change", and a render started when the
 // counter reads `v` shows every change up to `v`. The /updates streams

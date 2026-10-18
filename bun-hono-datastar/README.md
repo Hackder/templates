@@ -22,6 +22,22 @@ another device on the network (the Docker image does).
 Run `bun run tailwind` in another terminal while changing styles, and
 `bun run logview` for the local log and trace viewer (see below).
 
+## Password
+
+Without `AUTH_PASSWORD_HASH` the app is open to anyone who can reach it (in
+production it logs a warning saying so). To put it behind one password:
+
+```sh
+bun run auth:hash
+```
+
+It asks for the password and prints a `.env` line with every `$` escaped
+as `\$` (Bun's `.env` loader expands `$name` even in single quotes), plus
+the plain hash to set in a hosting environment. Each signed-in browser is a
+device session; `/settings` lists them, revokes them and signs out. Behind
+a reverse proxy, set `TRUST_PROXY_HOPS` so the login rate limit sees the
+client's address.
+
 ## Checks
 
 ```sh
@@ -93,6 +109,7 @@ Axiom files the OpenTelemetry semantic-convention fields (`url.path`, `http.*`,
 ## Structure
 
 - `src/state.ts` owns the shared state; every change bumps `src/version.ts` and re-renders every open tab.
+- `src/auth/` holds the opt-in password: device sessions, the login rate limiter and the password check; `src/web/auth.tsx` is its HTTP side (the gate, `/login`), `tools/auth-hash.ts` makes the hash.
 - `src/web/` is the web layer: `web.tsx` holds the Hono app and its routes, `layout.tsx` the shared document, `page.tsx` the minimal Datastar example, `updates.ts` the per-tab `/updates` stream, `session.ts` the per-tab view state and `emission.ts` the "answer once shown" bookkeeping for actions.
 - `src/datastar.tsx` contains signal parsing and SSE helpers.
 - `src/db.ts` and `src/schema.ts` provide the Drizzle/libSQL baseline.

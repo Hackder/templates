@@ -20,8 +20,8 @@ type JsonObject = z.infer<typeof jsonObjectSchema>;
  * would rewrite the browser's URL behind a partial update instead of being
  * followed as a navigation.
  */
-export function isDatastarRequest(req: HonoRequest): boolean {
-  return req.header("datastar-request") !== undefined;
+export function isDatastarRequest(req: Request): boolean {
+  return req.headers.has("datastar-request");
 }
 
 export async function readSignals(
