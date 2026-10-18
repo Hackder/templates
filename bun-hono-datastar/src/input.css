@@ -1,5 +1,41 @@
 @import "tailwindcss";
 
+@theme {
+  /*
+   * A busy button's look (src/web/components/busy.tsx): the spinner fades in
+   * and what it replaces fades out (opacity only, so a label stays the
+   * button's accessible name), only once the request has run for 200 ms. A
+   * quicker request drops aria-busy during the delay, the animation goes with
+   * it, and nothing on screen ever changed.
+   */
+  --animate-busy-in: busy-in 120ms var(--ease-out) 200ms both;
+  --animate-busy-out: busy-out 120ms var(--ease-out) 200ms both;
+
+  /*
+   * The spinner rests `invisible opacity-0`; hidden, not only transparent,
+   * so the e2e tests (and anything else asking) see it as not shown.
+   */
+  @keyframes busy-in {
+    from {
+      visibility: hidden;
+      opacity: 0;
+    }
+    to {
+      visibility: visible;
+      opacity: 1;
+    }
+  }
+
+  @keyframes busy-out {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* `busy:` a button with aria-busy="true", or anything inside it. */
+@custom-variant busy (&:is(button[aria-busy="true"], button[aria-busy="true"] *));
+
 @layer base {
   body {
     @apply m-0 min-h-screen bg-slate-950 font-sans text-slate-200 antialiased;

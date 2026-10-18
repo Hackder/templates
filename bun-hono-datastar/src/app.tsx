@@ -17,7 +17,7 @@ import {
   exhaustiveCheck,
   instantToDateForInteropWithDrizzle,
 } from "./utils";
-import { Icon } from "./web/components/icon";
+import { BusyIcon } from "./web/components/busy";
 
 export const app = new Hono();
 
@@ -178,12 +178,17 @@ function Counter({ count, recentItems }: CounterProps) {
           Rendered at {Temporal.Now.instant().toString()}
         </p>
       </div>
+      {/* Busy while its post is in flight: past 200 ms the icon turns into a
+          spinner (see ./web/components/busy), and a second click is ignored
+          instead of sending a stale count. */}
       <button
         type="button"
-        data-on:click="@post('/increment')"
-        class="flex w-fit items-center gap-2 rounded-full bg-cyan-300 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200"
+        data-indicator="_incrementing"
+        data-on:click="!$_incrementing && @post('/increment')"
+        data-attr:aria-busy="$_incrementing && 'true'"
+        class="busy:cursor-progress flex w-fit items-center gap-2 rounded-full bg-cyan-300 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200"
       >
-        <Icon icon="plus" aria-hidden="true" />
+        <BusyIcon icon="plus" />
         Increment
       </button>
     </main>
