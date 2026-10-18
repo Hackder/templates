@@ -92,7 +92,7 @@ export async function CounterPage({ state }: { state: Readonly<State> }) {
         data-indicator={incrementing}
         data-on:click={`!$${incrementing} && ${post("/actions/increment")}`}
         data-attr:aria-busy={`$${incrementing} && 'true'`}
-        class="busy:cursor-progress bg-primary text-primary-foreground hover:bg-primary/90 flex w-fit items-center gap-2 rounded-full px-6 py-3 font-semibold transition"
+        class="bg-primary text-primary-foreground hover:bg-primary/90 flex w-fit items-center gap-2 rounded-full px-6 py-3 font-semibold transition"
       >
         <BusyIcon icon="plus" />
         Increment

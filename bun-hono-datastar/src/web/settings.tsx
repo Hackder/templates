@@ -51,7 +51,7 @@ export function SettingsView({ gate }: { gate: DevicesView | null }) {
 }
 
 const ROW_BUTTON =
-  "border-input bg-background hover:bg-accent hover:text-accent-foreground busy:cursor-progress inline-flex h-8 shrink-0 items-center justify-center rounded-md border px-3 text-sm font-medium transition-colors";
+  "border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 shrink-0 items-center justify-center rounded-md border px-3 text-sm font-medium transition-colors";
 
 /** A phone or a computer, by the user agent; only for the row's icon. */
 function deviceIcon(userAgent: string): IconKind {
