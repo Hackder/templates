@@ -23,9 +23,18 @@ Tooling: TypeScript 7 (`tsc`), Oxlint (`.oxlintrc.json`, type-aware via `oxlint-
 
 ## Decisions
 
-`DECISIONS.md` records product and design decisions with their reasoning.
-Read it before changing user-facing or infrastructure behaviour, and add an
-entry when finishing work involved a judgement call.
+`DECISIONS.md` records important product decisions and load-bearing
+architecture choices agreed with the user. Read it before changing
+user-facing or infrastructure behaviour.
+
+Add an entry only for a decision of that weight that a future contributor
+would otherwise plausibly get wrong or undo, and only once the user agreed
+to it: a heading, the decision and its reason, a few lines in all.
+
+Do not add entries for: how something works, what was tried, test inventories
+and UI details do not belong there: a non-obvious invariant goes in a comment
+at the code it constrains, everything else nowhere. Code comments explain in
+place rather than cite `DECISIONS.md`.
 
 ## Before You Call Anything Done
 

@@ -1,8 +1,7 @@
 # Decisions
 
-Decisions that shape how the app behaves and that are easy to accidentally
-undo. Each entry says what we do and why. When you finish work that involved
-a judgement call like these, add it here.
+Conscious product and architecture decisions, each with its reason. Read
+before changing what they cover.
 
 ## `.env` is generated from the schema, there is no `.env.example`
 
