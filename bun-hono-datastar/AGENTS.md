@@ -28,7 +28,8 @@ route reads the page's signals with `readSignalsRequired` and a zod schema,
 and answers with `datastarSse`, patching elements and signals. Every request
 runs inside one owning `request` span (`withSpan` in `src/app.tsx`), so
 whatever a handler logs or `set()`s lands on that request's line and trace.
-Dev-only routes are mounted only when `NODE_ENV` is `development`.
+Dev-only routes are mounted only when `NODE_ENV` is `development`; unset
+means production, and `bun run dev` sets it.
 
 ## We collaborate
 

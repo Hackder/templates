@@ -11,7 +11,9 @@ bun run tailwind:build
 bun run dev
 ```
 
-`bun run dev` creates a `.env` on first run with every variable from
+`bun run dev` runs with `NODE_ENV=development`, which turns on the dev
+overlay and hot reload; with `NODE_ENV` unset the app runs as production.
+It creates a `.env` on first run with every variable from
 `src/env.ts` commented out next to its default. Uncomment a line to override it.
 There is no `.env.example`; the schema in `src/env.ts` is the documentation.
 The server listens on `127.0.0.1` only; set `HOST=0.0.0.0` to reach it from

@@ -11,9 +11,12 @@ const stringBool = z.preprocess((val) => {
 
 export const envSchema = z.object({
   // Deployment
+  // Unset means production: the dev overlay, hot reload and the generated
+  // .env need an explicit "development" (`bun run dev`); bun test and the
+  // E2E server run as "test".
   NODE_ENV: z
     .enum(["development", "production", "test"])
-    .default("development")
+    .default("production")
     .describe("Deployment"),
 
   PORT: z.coerce.number().default(3000).describe("Port the app listens on"),
