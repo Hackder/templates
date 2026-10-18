@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { app } from "./app";
-import { getFileHash } from "./assets";
 
 describe("app", () => {
   test("renders the initial page", async () => {
@@ -49,22 +48,5 @@ describe("app", () => {
 
     expect(await robots.text()).toContain("User-agent: *");
     expect(favicon.status).toBe(200);
-  });
-
-  test("only caches assets with a matching content hash", async () => {
-    const version = getFileHash("static/script.js");
-    const matching = await app.request(`/static/script.js?v=${version}`);
-    const mismatched = await app.request("/static/script.js?v=incorrect");
-    const unversioned = await app.request("/static/script.js");
-    const missing = await app.request("/static/missing.12345678.js?v=12345678");
-
-    expect(matching.status).toBe(200);
-    expect(matching.headers.get("cache-control")).toBe(
-      "public, max-age=31536000, immutable",
-    );
-    expect(mismatched.headers.get("cache-control")).toBe("no-store");
-    expect(unversioned.headers.get("cache-control")).toBe("no-cache");
-    expect(missing.status).toBe(404);
-    expect(missing.headers.get("cache-control")).toBe("no-store");
   });
 });

@@ -4,7 +4,7 @@ import { serveStatic } from "hono/bun";
 import { etag } from "hono/etag";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod/v4";
-import { getFileHash } from "./assets";
+import { getFileHash, staticCacheControl } from "./assets";
 import { gzipCompress } from "./compress";
 import { datastarSse, readSignalsRequired } from "./datastar";
 import { db } from "./db";
@@ -57,34 +57,40 @@ app.use("*", async (context, next) => {
 
 app.use("/static/*", etag());
 app.use("*", gzipCompress());
-/**
- * Asset caching keyed on the ?v=<content hash> stamped into URLs by
- * getFileHash. The hash is validated against the file this server actually
- * has: during a rolling deploy a server may receive a URL minted by a
- * different version, and answering it with mismatched bytes must not get
- * cached under that URL — those responses go out no-store. Only a verified
- * match is immutable; unversioned assets revalidate via ETag.
- */
 app.use("/static/*", async (context, next) => {
   await next();
-  const version = context.req.query("v");
-  const path = context.req.path.replace(/^\//, "");
-  if (version === undefined || path.includes("..")) {
-    context.header("Cache-Control", "no-cache");
-  } else if (context.res.status === 200 && version === getFileHash(path)) {
-    context.header("Cache-Control", "public, max-age=31536000, immutable");
-  } else {
-    context.header("Cache-Control", "no-store");
+  if (context.res.status === 200) {
+    context.header(
+      "Cache-Control",
+      staticCacheControl(
+        context.req.path.replace(/^\//, ""),
+        context.req.query("v"),
+      ),
+    );
   }
 });
 app.use("/static/*", serveStatic({ root: "./" }));
 
 // Old browsers and crawlers request /favicon.ico unprompted; serve the real
-// icon there instead of rendering a 404 page.
-app.use("/favicon.ico", serveStatic({ path: "./static/favicon.ico" }));
+// icon there instead of rendering a 404 page. It and robots.txt keep a fixed
+// URL, so they are cached for a day rather than forever: a change still lands.
+const FIXED_URL_CACHE = "public, max-age=86400";
+app.use(
+  "/favicon.ico",
+  serveStatic({
+    path: "./static/favicon.ico",
+    onFound: (_path, context) => {
+      context.header("Cache-Control", FIXED_URL_CACHE);
+    },
+  }),
+);
 
-app.get("/robots.txt", (context) => context.text("User-agent: *\nAllow: /\n"));
+app.get("/robots.txt", (context) => {
+  context.header("Cache-Control", FIXED_URL_CACHE);
+  return context.text("User-agent: *\nAllow: /\n");
+});
 app.get("/health", async (context) => {
+  context.header("Cache-Control", "no-store");
   try {
     await db.select({ id: items.id }).from(items).limit(1);
     return context.text("OK");
