@@ -3,6 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { HtmlEscapedCallbackPhase, resolveCallback } from "hono/utils/html";
 import { type ZodType, z } from "zod/v4";
+import {
+  createEventEncoder,
+  type EventEncoder,
+  preferredEncoding,
+} from "./compress";
 import { logger } from "./logger";
 import { jsonParse } from "./std";
 
@@ -62,8 +67,32 @@ export async function readSignalsRequired<T>(
   return parsed.data;
 }
 
+interface SseEvent {
+  event: string;
+  dataLines: string[];
+}
+
+/**
+ * Sends Datastar events on an event stream. The only way out is `send`,
+ * which hands each whole event to the encoder and writes what it returns
+ * in one write, so no bytes reach the browser beside the encoder.
+ */
 export class DatastarEventSender {
-  public constructor(public readonly api: SSEStreamingApi) {}
+  readonly #api: SSEStreamingApi;
+  readonly #encoder: EventEncoder;
+
+  public constructor(api: SSEStreamingApi, encoder: EventEncoder) {
+    this.#api = api;
+    this.#encoder = encoder;
+  }
+
+  public get aborted(): boolean {
+    return this.#api.aborted;
+  }
+
+  public onAbort(listener: () => void): void {
+    this.#api.onAbort(listener);
+  }
 
   public async patchElements(
     elements: string | Promise<string>,
@@ -73,9 +102,9 @@ export class DatastarEventSender {
     const dataLines =
       options?.useViewTransition === true ? ["useViewTransition true"] : [];
 
-    await this.api.writeSSE({
+    await this.#send({
       event: "datastar-patch-elements",
-      data: [...dataLines, ...elementLines(value)].join("\n"),
+      dataLines: [...dataLines, ...elementLines(value)],
     });
   }
 
@@ -84,21 +113,28 @@ export class DatastarEventSender {
     selector = "body",
   ): Promise<void> {
     const value = await render(elements);
-    await this.api.writeSSE({
+    await this.#send({
       event: "datastar-patch-elements",
-      data: [
+      dataLines: [
         "mode append",
         `selector ${selector}`,
         ...elementLines(value),
-      ].join("\n"),
+      ],
     });
   }
 
   public async patchSignals(signals: JsonObject): Promise<void> {
-    await this.api.writeSSE({
+    await this.#send({
       event: "datastar-patch-signals",
-      data: `signals ${JSON.stringify(signals)}`,
+      dataLines: [`signals ${JSON.stringify(signals)}`],
     });
+  }
+
+  async #send({ event, dataLines }: SseEvent): Promise<void> {
+    const text = `event: ${event}\n${dataLines.map((line) => `data: ${line}`).join("\n")}\n\n`;
+    // One write per event: WebKit holds back the tail of an event that
+    // arrives in several back-to-back pieces.
+    await this.#api.write(await this.#encoder.encode(text));
   }
 }
 
@@ -107,14 +143,28 @@ async function render(value: string | Promise<string>): Promise<string> {
 }
 
 function elementLines(value: string): string[] {
-  return value.split("\n").map((line) => `elements ${line}`);
+  return value.split(/\r\n|\r|\n/u).map((line) => `elements ${line}`);
 }
 
 export function datastarSse(
   context: Context,
   handler: (sender: DatastarEventSender) => Promise<void>,
 ): Response {
+  const encoding = preferredEncoding(
+    context.req.header("accept-encoding") ?? "",
+  );
+  if (encoding !== undefined) {
+    context.header("Content-Encoding", encoding);
+  }
+  context.header("Vary", "Accept-Encoding");
   return streamSSE(context, async (api) => {
-    await handler(new DatastarEventSender(api));
+    const encoder = createEventEncoder(encoding);
+    try {
+      await handler(new DatastarEventSender(api, encoder));
+    } finally {
+      // After the handler, never on abort: an encode in flight would never
+      // settle if its compressor went away under it.
+      encoder.close();
+    }
   });
 }

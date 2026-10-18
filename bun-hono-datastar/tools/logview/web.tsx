@@ -44,12 +44,12 @@ export function createApp(logPath: string): Hono {
         dirty = true;
         wake?.();
       });
-      sender.api.onAbort(() => {
+      sender.onAbort(() => {
         wake?.();
       });
 
       try {
-        while (!sender.api.aborted) {
+        while (!sender.aborted) {
           if (dirty) {
             dirty = false;
             await sender.patchElements(<AppView {...appState()} />);

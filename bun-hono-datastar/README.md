@@ -76,7 +76,7 @@ Axiom files the OpenTelemetry semantic-convention fields (`url.path`, `http.*`,
 - Vendored Datastar with custom hot reload, URL navigation, hash navigation, back navigation, and Safari view-transition support.
 - Development signal inspector and generation-aware server restart reloads.
 - Query-string content hashes with server-side validation and rolling-deployment-safe cache headers.
-- ETag and SSE-safe brotli/gzip middleware with q-value negotiation.
+- ETag and brotli/gzip middleware with q-value negotiation; Datastar event streams compress themselves with one compressor per connection and one write per event.
 - `/health` (used by the Docker `HEALTHCHECK`) and `/robots.txt`.
 - Typed, self-hosted Phosphor icons with direct class usage rejected by the linter.
 - Chromium and WebKit Playwright projects with isolated local database preparation.
