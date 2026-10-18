@@ -20,7 +20,8 @@ import {
   recordSuccess,
   retryAfter,
 } from "../auth/limiter";
-import { MAX_PASSWORD_LENGTH, checkPassword } from "../auth/password";
+import { checkPassword } from "../auth/password";
+import { MAX_PASSWORD_LENGTH } from "../auth/password-limits";
 import { isDatastarRequest } from "../datastar";
 import { env } from "../env";
 import { logger } from "../logger";

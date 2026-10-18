@@ -1,5 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { MAX_PASSWORD_LENGTH } from "../src/auth/password";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+} from "../src/auth/password-limits";
 
 // `bun run auth:hash [password]`: prints the `.env` line setting
 // AUTH_PASSWORD_HASH to the argon2id hash of the login password. Without an
@@ -37,9 +40,12 @@ async function readPassword(): Promise<string> {
 }
 
 const password = await readPassword();
-if (password.length < 12 || password.length > MAX_PASSWORD_LENGTH) {
+if (
+  password.length < MIN_PASSWORD_LENGTH ||
+  password.length > MAX_PASSWORD_LENGTH
+) {
   process.stderr.write(
-    `Use between 12 and ${MAX_PASSWORD_LENGTH} characters; this one password guards the whole app.\n`,
+    `Use between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters; this one password guards the whole app.\n`,
   );
   process.exitCode = 1;
 } else {

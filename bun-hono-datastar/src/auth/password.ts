@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { MAX_PASSWORD_LENGTH } from "./password-limits";
 
 // The one login password, opt-in. With AUTH_PASSWORD_HASH set (its
 // argon2id hash, from `bun run auth:hash`) everything is behind the login;
@@ -8,9 +9,6 @@ import { env } from "../env";
 
 /** Whether the password gate is on. */
 export const PASSWORD_GATE = env.AUTH_PASSWORD_HASH !== undefined;
-
-/** Longer input is rejected before hashing, so it cannot cost CPU. */
-export const MAX_PASSWORD_LENGTH = 1024;
 
 /** Constant-time comparison is Bun.password's job. */
 export async function checkPassword(password: string): Promise<boolean> {
