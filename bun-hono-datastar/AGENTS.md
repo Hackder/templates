@@ -87,6 +87,9 @@ Everything must pass!
 - E2E tests are a few long user flows, each a story through the app with a
   step per phase. Extend an existing flow rather than add a test per small
   behaviour; small behaviours belong in unit tests.
+- E2E tests find elements the way a user does: by role and accessible name,
+  then label; a `data-testid` only for repeated structure. Never by class,
+  id or attribute selector (`local/no-css-locators`).
 - No sleeps, grace delays or nudges as fixes, in tests or in code.
   If something depends on order or timing, model the real mechanism with a
   proper abstraction and assert that contract. A timing workaround is a

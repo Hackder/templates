@@ -15,6 +15,7 @@
     ],
     "local/no-complex-if-condition": "error",
     "local/no-consecutive-parameters-same-type": "error",
+    "local/no-css-locators": "error",
     "local/no-date": "error",
     "local/no-direct-phosphor-icons": "error",
     "local/no-import-extensions": "error",

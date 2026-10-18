@@ -135,6 +135,12 @@
       }
     },
     {
+      "files": ["e2e/**"],
+      "rules": {
+        "local/no-css-locators": "error"
+      }
+    },
+    {
       "files": ["lint-rules/**"],
       "rules": {
         "anti-slop/no-runtime-typeof": "off"

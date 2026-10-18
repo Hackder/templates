@@ -6,6 +6,7 @@ import {
   enforceUpdateWithWhere,
 } from "./enforce-where.js";
 import noComplexIfCondition from "./no-complex-if-condition.js";
+import noCssLocators from "./no-css-locators.js";
 import noConsecutiveParametersSameType from "./no-consecutive-parameters-same-type.js";
 import noDate from "./no-date.js";
 import noDirectPhosphorIcons from "./no-direct-phosphor-icons.js";
@@ -24,6 +25,7 @@ export default definePlugin({
     "enforce-update-with-where": enforceUpdateWithWhere,
     "no-complex-if-condition": noComplexIfCondition,
     "no-consecutive-parameters-same-type": noConsecutiveParametersSameType,
+    "no-css-locators": noCssLocators,
     "no-date": noDate,
     "no-direct-phosphor-icons": noDirectPhosphorIcons,
     "no-import-extensions": noImportExtensions,

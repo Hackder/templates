@@ -64,6 +64,7 @@ const expected = {
     file: "no-multiple-positional-booleans.ts",
     lines: [5, 9, 13, 17, 21, 25],
   },
+  "no-css-locators": { file: "no-css-locators.ts", lines: [2, 3, 4, 5] },
   "no-date": { file: "no-date.ts", lines: [1, 2, 3, 4] },
   "no-import-meta-env": { file: "no-import-meta-env.ts", lines: [1] },
   "no-json-parse": { file: "no-json-parse.ts", lines: [1, 2, 3, 4, 5] },
