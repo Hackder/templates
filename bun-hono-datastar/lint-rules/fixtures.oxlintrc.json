@@ -21,6 +21,7 @@
     "local/no-import-meta-env": "error",
     "local/no-json-parse": "error",
     "local/no-multiple-positional-booleans": "error",
+    "local/no-string-style": "error",
     "local/zod-v4-import": "error"
   }
 }

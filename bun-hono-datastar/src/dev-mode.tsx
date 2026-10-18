@@ -12,9 +12,8 @@ const DEV_UI_PERSIST_KEY = "bun-hono-datastar";
 const generation = crypto.randomUUID();
 const startedAt = Temporal.Now.instant().toString();
 
-// The overlay is deliberately self-contained: neutral colours, sharp corners,
-// no animation. It has to sit on top of any page without inheriting or clashing
-// with that page's design.
+// The overlay is deliberately plain: the popover tokens, sharp corners, no
+// animation, so it sits on top of any page without competing with its design.
 interface FieldProps {
   label: string;
   value: string;
@@ -23,8 +22,8 @@ interface FieldProps {
 function Field({ label, value }: FieldProps) {
   return (
     <div class="flex items-baseline gap-2 overflow-hidden">
-      <span class="w-12 shrink-0 text-neutral-500">{label}</span>
-      <span class="truncate text-neutral-300">{value}</span>
+      <span class="text-muted-foreground w-12 shrink-0">{label}</span>
+      <span class="text-popover-foreground truncate">{value}</span>
     </div>
   );
 }
@@ -46,18 +45,20 @@ export function DevButton({ icon, label, action, indicator }: DevButtonProps) {
   return (
     <button
       type="button"
-      class="relative flex cursor-pointer items-center gap-1.5 border border-neutral-700 bg-neutral-900 px-1.5 py-1 text-[11px] text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+      class="border-input bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground text-2xs relative flex cursor-pointer items-center gap-1.5 border px-1.5 py-1"
       data-on:click={action}
       data-indicator={indicator}
     >
-      <Icon icon={icon} class="text-[13px]" />
+      <Icon icon={icon} class="text-xs" />
       <span>{label}</span>
+      {/* Hidden until Datastar runs; `hidden` (preflight makes it
+          !important) is dropped while the indicator is on. */}
       <span
-        class="absolute inset-0 flex items-center justify-center bg-neutral-900"
-        style="display: none;"
-        data-show={`$${indicator}`}
+        class="bg-card absolute inset-0 flex items-center justify-center"
+        hidden
+        data-attr:hidden={`!$${indicator}`}
       >
-        <Icon icon="circle-notch" class="animate-spin text-[13px]" />
+        <Icon icon="circle-notch" class="animate-spin text-xs" />
       </span>
     </button>
   );
@@ -70,14 +71,14 @@ export function DevMode({ children }: PropsWithChildren) {
       id="dev-ui"
       data-dev-ui-key={DEV_UI_PERSIST_KEY}
       data-hotreload={`/hot-reload?generation=${generation}`}
-      class="pointer-events-none fixed inset-0 z-[2147483647] font-mono text-[12px] text-neutral-300"
+      class="text-popover-foreground pointer-events-none fixed inset-0 z-2147483647 font-mono text-xs"
     >
       {/* Collapsed state: a single icon that reports connection health. Drag it
           to any edge; a click opens the panel. */}
       <button
         type="button"
         id="dev-ui-tab"
-        class="pointer-events-auto absolute flex size-7 cursor-grab touch-none items-center justify-center border border-neutral-700 bg-neutral-950 text-neutral-400 hover:text-neutral-100"
+        class="border-input bg-popover text-muted-foreground hover:text-foreground pointer-events-auto absolute flex size-7 cursor-grab touch-none items-center justify-center border"
         aria-label="Toggle dev tools"
         /* Position is an inline style dev-mode.js writes on load, and the
            server markup has none. A page patch morphs the whole body and
@@ -85,48 +86,44 @@ export function DevMode({ children }: PropsWithChildren) {
            tab jumps to the container's origin on every Datastar navigation. */
         data-preserve-attr="style"
       >
-        <Icon icon="lightning" class="text-[14px]" data-show="!$hotreloading" />
+        <Icon icon="lightning" class="text-sm" data-show="!$hotreloading" />
         <Icon
           icon="plugs"
-          class="text-[14px] text-amber-400"
-          style="display: none;"
-          data-show="$hotreloading"
+          class="text-warning text-sm"
+          hidden
+          data-attr:hidden="!$hotreloading"
         />
       </button>
 
       <section
         id="dev-ui-panel"
-        class="pointer-events-auto absolute flex flex-col border border-neutral-700 bg-neutral-950"
-        style="display: none;"
-        /* Geometry and open/closed state both live in this inline style, so a
-           morph must not reset it to the collapsed server default. */
+        class="border-input bg-popover pointer-events-auto absolute hidden flex-col border"
+        /* Geometry and open/closed state both live in this inline style
+           (dev-mode.js; its display beats the `hidden` class), so a morph
+           must not reset it to the collapsed server default. */
         data-preserve-attr="style"
       >
         <header
           id="dev-ui-drag"
-          class="flex cursor-grab touch-none items-center gap-2 border-b border-neutral-800 px-1.5 py-1 text-[11px] tracking-widest text-neutral-500 uppercase select-none"
+          class="text-muted-foreground text-2xs flex cursor-grab touch-none items-center gap-2 border-b px-1.5 py-1 tracking-widest uppercase select-none"
         >
-          <Icon icon="dots-six-vertical" class="text-[13px]" />
+          <Icon icon="dots-six-vertical" class="text-xs" />
           <span>Signals</span>
           <span class="ml-auto flex items-center gap-1 normal-case">
-            <span class="text-neutral-400" data-show="!$hotreloading">
+            <span class="text-muted-foreground" data-show="!$hotreloading">
               live
             </span>
-            <span
-              class="text-amber-400"
-              style="display: none;"
-              data-show="$hotreloading"
-            >
+            <span class="text-warning" hidden data-attr:hidden="!$hotreloading">
               reconnecting
             </span>
           </span>
           <button
             type="button"
             id="dev-ui-close"
-            class="cursor-pointer px-1 text-neutral-500 hover:text-neutral-100"
+            class="text-muted-foreground hover:text-foreground cursor-pointer px-1"
             aria-label="Close dev tools"
           >
-            <Icon icon="x" class="text-[13px]" />
+            <Icon icon="x" class="text-xs" />
           </button>
         </header>
 
@@ -136,10 +133,10 @@ export function DevMode({ children }: PropsWithChildren) {
         ></pre>
 
         {children !== undefined && (
-          <div class="border-t border-neutral-800 px-2 py-1.5">{children}</div>
+          <div class="border-t px-2 py-1.5">{children}</div>
         )}
 
-        <div class="grid gap-0.5 border-t border-neutral-800 px-2 py-1.5 text-[11px]">
+        <div class="text-2xs grid gap-0.5 border-t px-2 py-1.5">
           <Field label="build" value={generation.slice(0, 8)} />
           <Field label="start" value={startedAt} />
         </div>
@@ -147,7 +144,7 @@ export function DevMode({ children }: PropsWithChildren) {
         {/* Resize grip. */}
         <div
           id="dev-ui-resize"
-          class="absolute right-0 bottom-0 size-3 cursor-nwse-resize touch-none border-r-2 border-b-2 border-neutral-600"
+          class="border-muted-foreground absolute right-0 bottom-0 size-3 cursor-nwse-resize touch-none border-r-2 border-b-2"
         ></div>
       </section>
 

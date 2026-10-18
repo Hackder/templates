@@ -5,7 +5,8 @@
     {
       "name": "anti-slop",
       "specifier": "./lint-rules/anti-slop/index.ts"
-    }
+    },
+    "@shadcn/lint"
   ],
   "plugins": ["eslint", "typescript"],
   "categories": {
@@ -117,6 +118,22 @@
     ]
   },
   "overrides": [
+    {
+      // The design system: only the tokens in src/input.css, no arbitrary
+      // values, no inline styles. Scoped to the app's markup; the logview
+      // tool has its own plain stylesheet.
+      "files": ["src/**/*.tsx"],
+      "rules": {
+        "shadcn/no-raw-colors": "error",
+        "shadcn/no-arbitrary-values": "error",
+        // Phosphor's classes come from its own stylesheet, used only by
+        // the <Icon> wrapper (enforced by local/no-direct-phosphor-icons).
+        "shadcn/no-unknown-classes": ["error", { "allow": ["ph-*"] }],
+        "shadcn/no-inline-styles": "error",
+        "shadcn/require-static-classes": "error",
+        "local/no-string-style": "error"
+      }
+    },
     {
       "files": ["lint-rules/**"],
       "rules": {

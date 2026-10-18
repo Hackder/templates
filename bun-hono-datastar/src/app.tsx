@@ -134,9 +134,9 @@ type CounterTone = "idle" | "active";
 function counterToneClass(tone: CounterTone): string {
   switch (tone) {
     case "idle":
-      return "text-slate-400";
+      return "text-muted-foreground";
     case "active":
-      return "text-white";
+      return "text-foreground";
     default:
       return exhaustiveCheck(tone);
   }
@@ -156,7 +156,7 @@ function Counter({ count, recentItems }: CounterProps) {
       class="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-8 px-6"
     >
       <div class="space-y-3">
-        <p class="text-sm font-medium tracking-[0.2em] text-cyan-300 uppercase">
+        <p class="tracking-eyebrow text-primary text-sm font-medium uppercase">
           Bun + Hono + Datastar
         </p>
         <h1
@@ -167,14 +167,14 @@ function Counter({ count, recentItems }: CounterProps) {
         >
           Count: {count}
         </h1>
-        <p class="text-slate-400">
+        <p class="text-muted-foreground">
           Server-rendered JSX, updated over a Datastar event stream.
         </p>
-        <p class="text-xs text-slate-600">
+        <p class="text-muted-foreground/70 text-xs">
           {recentItems} items stored in the last {RECENT_ITEMS_WINDOW.hours}{" "}
           hours
         </p>
-        <p class="text-xs text-slate-600">
+        <p class="text-muted-foreground/70 text-xs">
           Rendered at {Temporal.Now.instant().toString()}
         </p>
       </div>
@@ -186,7 +186,7 @@ function Counter({ count, recentItems }: CounterProps) {
         data-indicator="_incrementing"
         data-on:click="!$_incrementing && @post('/increment')"
         data-attr:aria-busy="$_incrementing && 'true'"
-        class="busy:cursor-progress flex w-fit items-center gap-2 rounded-full bg-cyan-300 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200"
+        class="busy:cursor-progress bg-primary text-primary-foreground hover:bg-primary/90 flex w-fit items-center gap-2 rounded-full px-6 py-3 font-semibold transition"
       >
         <BusyIcon icon="plus" />
         Increment
@@ -205,7 +205,17 @@ app.get("/", async (context) => {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#020617" />
+        {/* The browser chrome matches --background in src/input.css. */}
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#ffffff"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#0a0a0a"
+        />
         <title>Bun Hono Datastar</title>
         <link
           rel="icon"

@@ -1,6 +1,27 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Tailwind's default palette is removed
+ * (`--color-*: initial`), so only the colors below exist, and the lint
+ * rules (shadcn/* in .oxlintrc.json) refuse raw palette colors, arbitrary
+ * values and inline styles in the app's .tsx files. Add a token here when the
+ * design needs one.
+ *
+ * Every color is one `light-dark()` pair, so the page follows the system's
+ * light or dark mode through `color-scheme`. The palette is shadcn/ui's
+ * neutral one, with a cyan primary.
+ */
+
 @theme {
+  --color-*: initial;
+
+  /* Below text-xs, for dense tool UI such as the dev overlay. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: calc(1 / 0.6875);
+
+  /* The spaced-out capitals of a small label above a heading. */
+  --tracking-eyebrow: 0.2em;
+
   /*
    * A busy button's look (src/web/components/busy.tsx): the spinner fades in
    * and what it replaces fades out (opacity only, so a label stays the
@@ -33,11 +54,69 @@
   }
 }
 
+:root {
+  color-scheme: light dark;
+
+  --background: light-dark(oklch(1 0 0), oklch(0.145 0 0));
+  --foreground: light-dark(oklch(0.145 0 0), oklch(0.985 0 0));
+  --card: light-dark(oklch(1 0 0), oklch(0.205 0 0));
+  --card-foreground: var(--foreground);
+  --popover: light-dark(oklch(1 0 0), oklch(0.175 0 0));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(oklch(0.52 0.105 223.128), oklch(0.865 0.127 207.078));
+  --primary-foreground: light-dark(oklch(0.985 0 0), oklch(0.145 0 0));
+  --secondary: light-dark(oklch(0.97 0 0), oklch(0.269 0 0));
+  --secondary-foreground: var(--foreground);
+  --muted: light-dark(oklch(0.97 0 0), oklch(0.269 0 0));
+  --muted-foreground: light-dark(oklch(0.556 0 0), oklch(0.708 0 0));
+  --accent: light-dark(oklch(0.97 0 0), oklch(0.269 0 0));
+  --accent-foreground: var(--foreground);
+  --destructive: light-dark(
+    oklch(0.577 0.245 27.325),
+    oklch(0.704 0.191 22.216)
+  );
+  --destructive-foreground: light-dark(oklch(0.985 0 0), oklch(0.145 0 0));
+  --warning: light-dark(oklch(0.666 0.179 58.318), oklch(0.828 0.189 84.429));
+  --border: light-dark(oklch(0.922 0 0), oklch(1 0 0 / 10%));
+  --input: light-dark(oklch(0.87 0 0), oklch(1 0 0 / 18%));
+  --ring: light-dark(oklch(0.708 0 0), oklch(0.556 0 0));
+}
+
+@theme inline {
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
 /* `busy:` a button with aria-busy="true", or anything inside it. */
 @custom-variant busy (&:is(button[aria-busy="true"], button[aria-busy="true"] *));
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+
   html {
+    @apply bg-background;
     /* Room for the scrollbar is kept even on pages too short to scroll, so
        the layout does not shift sideways when a patch makes one scroll. */
     scrollbar-gutter: stable;
@@ -47,6 +126,6 @@
   }
 
   body {
-    @apply m-0 min-h-screen bg-slate-950 font-sans text-slate-200 antialiased;
+    @apply bg-background text-foreground m-0 min-h-screen font-sans antialiased;
   }
 }

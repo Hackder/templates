@@ -13,6 +13,7 @@ import noImportExtensions from "./no-import-extensions.js";
 import noImportMetaEnv from "./no-import-meta-env.js";
 import noJsonParse from "./no-json-parse.js";
 import noMultiplePositionalBooleans from "./no-multiple-positional-booleans.js";
+import noStringStyle from "./no-string-style.js";
 import zodV4Import from "./zod-v4-import.js";
 
 export default definePlugin({
@@ -29,6 +30,7 @@ export default definePlugin({
     "no-import-meta-env": noImportMetaEnv,
     "no-json-parse": noJsonParse,
     "no-multiple-positional-booleans": noMultiplePositionalBooleans,
+    "no-string-style": noStringStyle,
     "zod-v4-import": zodV4Import,
   },
 });

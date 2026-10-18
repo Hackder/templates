@@ -31,6 +31,9 @@ whatever a handler logs or `set()`s lands on that request's line and trace.
 Dev-only routes are mounted only when `NODE_ENV` is `development`; unset
 means production, and `bun run dev` sets it.
 
+Styling uses only the tokens in `src/input.css`; the `shadcn/*` rules and
+`local/no-string-style` enforce it.
+
 ## We collaborate
 
 The user is there to collaborate with you. If you run into issues, like

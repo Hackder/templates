@@ -72,6 +72,7 @@ const expected = {
     lines: [2, 3, 4, 5, 6],
   },
   "zod-v4-import": { file: "zod-v4-import.ts", lines: [2, 3, 4, 5] },
+  "no-string-style": { file: "no-string-style.tsx", lines: [2, 3, 4] },
   "no-direct-phosphor-icons": {
     file: "no-direct-phosphor-icons.tsx",
     lines: [2, 6, 10],
