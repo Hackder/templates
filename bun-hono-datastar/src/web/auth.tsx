@@ -302,8 +302,11 @@ const loginForm = z.object({
   next: z.string().catch("/"),
 });
 
-/** Mounts /login and the device actions of the settings page. */
-export function mountAuth(app: Hono<AppEnv>): void {
+/**
+ * Mounts /login, checking passwords against `passwordHash`, and the device
+ * actions of the settings page.
+ */
+export function mountAuth(app: Hono<AppEnv>, passwordHash: string): void {
   app.get("/login", (context) => {
     const next = safeNext(context.req.query("next"));
     if (context.get("device") !== null) {
@@ -342,7 +345,7 @@ export function mountAuth(app: Hono<AppEnv>): void {
 
     recordAttempt(perIp, ip, now);
     recordAttempt(everyone, EVERYONE, now);
-    if (!(await checkPassword(form.password))) {
+    if (!(await checkPassword(passwordHash, form.password))) {
       logger().warn("Wrong login password", { ip });
       return context.html(
         <LoginPage next={next} error="Wrong password." />,

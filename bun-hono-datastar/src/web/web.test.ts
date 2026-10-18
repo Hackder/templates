@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { app } from "./web";
+import { createApp } from "./web";
+
+// The app without the password gate; src/web/auth.test.ts covers it with.
+const app = createApp({ passwordHash: undefined });
 
 describe("app", () => {
   test("renders the initial page", async () => {

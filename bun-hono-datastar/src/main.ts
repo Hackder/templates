@@ -1,7 +1,6 @@
 import os from "node:os";
 import { flushDeviceWrites, loadDevices } from "./auth/devices";
-import { PASSWORD_GATE } from "./auth/password";
-import { app } from "./web/web";
+import { createApp } from "./web/web";
 import { ensureDotEnv, env } from "./env";
 import { closeDb, db } from "./db";
 import { logger, onShutdown } from "./logger";
@@ -31,7 +30,7 @@ if (env.MOCK_TIME) {
   });
 }
 
-if (PASSWORD_GATE) {
+if (env.AUTH_PASSWORD_HASH !== undefined) {
   // Signed-in devices, before serving: the gate looks them up in memory.
   await loadDevices(db);
 } else if (env.NODE_ENV === "production") {
@@ -39,6 +38,8 @@ if (PASSWORD_GATE) {
     "AUTH_PASSWORD_HASH is not set: the app is public, anyone who can reach it can use it",
   );
 }
+
+const app = createApp({ passwordHash: env.AUTH_PASSWORD_HASH });
 
 const server = Bun.serve({
   // The client's address reaches the routes as a binding (see AppEnv in

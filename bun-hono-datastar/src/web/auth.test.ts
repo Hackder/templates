@@ -1,27 +1,39 @@
-import { describe, expect, test } from "bun:test";
-import { Hono } from "hono";
-import { deviceLabel } from "../auth/devices";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import {
-  type AppEnv,
-  PUBLIC_ROUTES,
-  authGate,
-  isPublic,
-  safeNext,
-} from "./auth";
-import { app } from "./web";
+  generateSQLiteDrizzleJson,
+  generateSQLiteMigration,
+} from "drizzle-kit/api";
+import { deviceLabel, loadDevices } from "../auth/devices";
+import * as schema from "../schema";
+import { PUBLIC_ROUTES, isPublic, safeNext } from "./auth";
+import { createApp } from "./web";
 
-// Deny by default while the gate is on: every route the app registers must
+// The app with the password gate on, as src/main.ts builds it when
+// AUTH_PASSWORD_HASH is set, its devices in a database of its own.
+// Deny by default: every route it registers, the gate's own included, must
 // turn away a request without a device session unless it is on the public
-// allowlist. The unit tests run without AUTH_PASSWORD_HASH, so the app's
-// own gate is off; an outer gate that is on runs first instead, as the
-// app's does when it is on. Requests carry a same-site Origin so they get
-// past the cross-site check and reach the gate itself.
+// allowlist. Requests carry a same-site Origin so they get past the
+// cross-site check and reach the gate itself.
 
-const gated = new Hono<AppEnv>();
-gated.use("*", authGate(true));
-gated.route("/", app);
+const PASSWORD = "correct horse battery staple";
+const gated = createApp({
+  passwordHash: await Bun.password.hash(PASSWORD, { algorithm: "argon2id" }),
+});
+
+beforeAll(async () => {
+  const client = createClient({ url: ":memory:" });
+  const statements = await generateSQLiteMigration(
+    await generateSQLiteDrizzleJson({}),
+    await generateSQLiteDrizzleJson(schema),
+  );
+  await client.executeMultiple(statements.join(";\n"));
+  await loadDevices(drizzle(client, { schema }));
+});
 
 const HOST = "localhost:3000";
+const ORIGIN = `http://${HOST}`;
 const ENV = { connectionIp: "127.0.0.1" };
 
 function concretePath(path: string): string {
@@ -37,7 +49,7 @@ async function send(route: Route, accept: "text/html" | "*/*") {
     `http://${HOST}${path}`,
     {
       method,
-      headers: { host: HOST, origin: `http://${HOST}`, accept },
+      headers: { host: HOST, origin: ORIGIN, accept },
       redirect: "manual",
     },
     ENV,
@@ -46,7 +58,7 @@ async function send(route: Route, accept: "text/html" | "*/*") {
 
 describe("authGate", () => {
   const routes = new Set<Route>();
-  for (const route of app.routes) {
+  for (const route of gated.routes) {
     const methods = route.method === "ALL" ? ["GET", "POST"] : [route.method];
     for (const method of methods) {
       routes.add(`${method} ${concretePath(route.path)}`);
@@ -57,6 +69,10 @@ describe("authGate", () => {
     expect(routes.has("GET /updates")).toBe(true);
     expect(routes.has("POST /actions/increment")).toBe(true);
     expect(routes.has("GET /settings")).toBe(true);
+    expect(routes.has("POST /login")).toBe(true);
+    expect(routes.has("POST /actions/sign-out")).toBe(true);
+    expect(routes.has("POST /actions/revoke-device")).toBe(true);
+    expect(routes.has("POST /actions/revoke-other-devices")).toBe(true);
   });
 
   test("turns away every non-public route without a device session", async () => {
@@ -134,6 +150,54 @@ describe("authGate", () => {
         status: 403,
       });
     }
+  });
+});
+
+/**
+ * Posts the login form, with the browser's device cookie if it has one;
+ * returns the response and the cookie the browser keeps afterwards.
+ */
+async function logIn(cookie: string | null) {
+  const headers = new Headers({ host: HOST, origin: ORIGIN });
+  if (cookie !== null) {
+    headers.set("cookie", cookie);
+  }
+  const response = await gated.request(
+    `http://${HOST}/login`,
+    {
+      method: "POST",
+      headers,
+      body: new URLSearchParams({ password: PASSWORD, next: "/settings" }),
+      redirect: "manual",
+    },
+    ENV,
+  );
+  const [set = null] = response.headers.get("set-cookie")?.split(";") ?? [];
+  return { response, cookie: set ?? cookie };
+}
+
+async function getPage(path: string, cookie: string | null) {
+  const headers = new Headers({ host: HOST, accept: "text/html" });
+  if (cookie !== null) {
+    headers.set("cookie", cookie);
+  }
+  return await gated.request(
+    `http://${HOST}${path}`,
+    { headers, redirect: "manual" },
+    ENV,
+  );
+}
+
+describe("signed in", () => {
+  test("the right password signs a browser in and opens the app", async () => {
+    const { response, cookie } = await logIn(null);
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/settings");
+    expect(cookie).toStartWith("device=");
+
+    const page = await getPage("/", cookie);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain("Count:");
   });
 });
 

@@ -19,7 +19,7 @@ src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
 src/state.ts          the app's shared state and its only writer
 src/version.ts        one version counter for every renderable change
 src/auth/             device sessions, login rate limiter, the password (opt-in)
-src/web/web.tsx       the Hono app: security headers, middleware, routes, actions
+src/web/web.tsx       `createApp`: security headers, middleware, routes, actions
 src/web/layout.tsx    the document every page shares
 src/web/page.tsx      the example page (the counter)
 src/web/updates.ts    each tab's /updates stream: re-renders the page on change
