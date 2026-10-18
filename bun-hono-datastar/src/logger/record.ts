@@ -24,7 +24,15 @@ export const levelOrder = {
 export const spanKindSchema = z.enum(["internal", "server", "client"]);
 export type SpanKind = z.infer<typeof spanKindSchema>;
 
-/** Application entry point that started a trace, inherited by every span. */
+/**
+ * Application entry point that started a trace, inherited by every span and
+ * exported as `trace.origin`. Only entry spans set it (`SpanOptions.origin`);
+ * a span inside an existing trace keeps the root's origin. It exists because
+ * Axiom cannot group spans by their root in aggregate queries, and one closed,
+ * low-cardinality value does that without copying parent fields down (span
+ * fields are never inherited) or inferring meaning from span names. A new kind
+ * of entry point (a scheduled job, a CLI command) gets its own value here.
+ */
 export const traceOriginSchema = z.enum(["request"]);
 export type TraceOrigin = z.infer<typeof traceOriginSchema>;
 
