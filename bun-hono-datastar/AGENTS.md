@@ -2,6 +2,34 @@
 
 This file captures the conventions used in this codebase. Read it before making changes.
 
+`DESIGN.md` is the source of truth for what the app must do; read it first.
+
+## Architecture
+
+```
+src/main.ts           process start: Bun version check, `.env`, shutdown, Bun.serve
+src/app.tsx           the Hono app: security headers, middleware, pages, actions
+src/datastar.tsx      reading signals (validated with zod) and SSE patch responses
+src/env.ts            the one environment parser; nothing else reads process.env
+src/db.ts             libSQL client and Drizzle instance; schema in src/schema.ts
+src/db-instrument.ts  records every query as a `client` section of its span
+src/logger/           spans, events and errors; a worker formats and ships them
+src/compress.ts       gzip / brotli middleware; per-connection SSE compression
+src/assets.ts         content hashes for static URLs (`?v=`) and Cache-Control
+src/dev-mode.tsx      dev overlay, hot reload and /exit; development only
+src/web/components/   shared JSX components (icons, busy spinners)
+static/               browser files: Datastar, script.js, icons, built styles
+tools/logview/        local log and trace viewer for `logs/log.ndjson`
+e2e/                  Playwright tests against a prepared local database
+```
+
+A page is server-rendered JSX. An interaction is a Datastar action: a
+route reads the page's signals with `readSignalsRequired` and a zod schema,
+and answers with `datastarSse`, patching elements and signals. Every request
+runs inside one owning `request` span (`withSpan` in `src/app.tsx`), so
+whatever a handler logs or `set()`s lands on that request's line and trace.
+Dev-only routes are mounted only when `NODE_ENV` is `development`.
+
 ## We collaborate
 
 The user is there to collaborate with you. If you run into issues, like
