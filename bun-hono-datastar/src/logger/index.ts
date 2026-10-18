@@ -279,6 +279,44 @@ export async function flushLogger(): Promise<void> {
   );
 }
 
+const shutdownTasks: (() => void | Promise<void>)[] = [];
+let signalsHandled = false;
+
+/**
+ * On SIGTERM or SIGINT: run the shutdown tasks in order, flush the logs
+ * (so the tasks' own lines are kept), then exit.
+ */
+function handleSignals(): void {
+  if (signalsHandled) {
+    return;
+  }
+  signalsHandled = true;
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.once(signal, () => {
+      void (async () => {
+        for (const task of shutdownTasks) {
+          try {
+            await task();
+          } catch (error) {
+            logger().error("Shutdown task failed", { err: error });
+          }
+        }
+        await flushLogger();
+        process.exit(signal === "SIGINT" ? 130 : 0);
+      })();
+    });
+  }
+}
+
+/**
+ * Runs `task` on SIGTERM or SIGINT before the process exits, e.g. to close
+ * the database.
+ */
+export function onShutdown(task: () => void | Promise<void>): void {
+  shutdownTasks.push(task);
+  handleSignals();
+}
+
 function emit(record: LogRecord): void {
   for (const transport of transports) {
     try {
@@ -868,13 +906,7 @@ export function workerTransport(): Transport {
       }
     });
 
-    for (const signal of ["SIGTERM", "SIGINT"] as const) {
-      process.once(signal, () => {
-        void flush().then(() => {
-          process.exit(signal === "SIGINT" ? 130 : 0);
-        });
-      });
-    }
+    handleSignals();
   }
 
   return {

@@ -1,7 +1,8 @@
 import os from "node:os";
 import { app } from "./app";
 import { ensureDotEnv, env } from "./env";
-import { logger } from "./logger";
+import { closeDb } from "./db";
+import { logger, onShutdown } from "./logger";
 
 // `.bun-version` is the pinned Bun release (see bun-version.test.ts). Bun does
 // not enforce it, so surface a mismatch loudly instead of letting a different
@@ -27,6 +28,12 @@ if (env.MOCK_TIME) {
     now: Temporal.Now.instant(),
   });
 }
+
+// A deploy stops the container with SIGTERM: the database connection (and an
+// embedded replica's sync) is closed before the logger's last flush and exit.
+onShutdown(() => {
+  closeDb();
+});
 
 const server = Bun.serve({
   fetch: app.fetch,
